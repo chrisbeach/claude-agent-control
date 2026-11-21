@@ -8,8 +8,9 @@ you list, and serves them to the display.
 - **Probe** (`agent_control/probe.py`, one file, standard library only): prints the
   machine's sessions as a JSON line every few seconds. The list is
   `claude agents --json`, the CLI's machine-readable session list; each session's
-  title, whether it has been used, its last turn and its token cost come from its
-  transcript, read with the Claude Agent SDK when that package can be imported.
+  title and whether it has been used come from the Claude Agent SDK when that
+  package can be imported, and its token cost and (once it has been used) its last
+  turn are read straight from its transcript file.
 - **Hub** (`agent_control/hub.py`): keeps one probe running per machine: as a child
   process on its own machine, and as `ssh <host> python3 -` on the others (the script
   is piped over, so nothing has to be installed there). `agent_control/fleet.py` turns
@@ -122,11 +123,13 @@ are a starting point. Needs a systemd-based Linux desktop.
 
 A session that has stopped (DONE, FAILED or NEEDS INPUT) gets a second line: what is
 outstanding for you, e.g. "APPROVE GIT PUSH ORIGIN MAIN" or "NOTHING - ALL TESTS
-PASS". The probe sends the session's last turn; the hub puts each new turn once to
-`claude -p --model haiku` (thinking, tools and MCP off, run in an empty directory,
-`~/.cache/agent-control/todo`) and keeps the answer. That is one short call on your
-Claude plan per finished turn. A line that starts with NOTHING dims the row. The
-hub's own `claude -p` runs are left off the display.
+PASS". The probe sends the session's last turn, read from its transcript; if Claude
+Code has compacted the session since (it does so to sessions left idle), that is
+still the turn before the compaction, not its summary. The hub puts each new turn
+once to `claude -p --model haiku` (thinking, tools and MCP off, run in an empty
+directory, `~/.cache/agent-control/todo`) and keeps the answer. That is one short
+call on your Claude plan per finished turn. A line that starts with NOTHING dims the
+row. The hub's own `claude -p` runs are left off the display.
 
 ## Usage gauges
 

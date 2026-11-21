@@ -13,12 +13,10 @@ sessions on each of your machines with `claude agents --json`.
 
 | | |
 |---|---|
-| ![A session needs input: its pill pulses and the elbows turn amber](docs/screenshots/mixed.png) | ![A busy fleet across four machines, one of them off, with usage gauges](docs/screenshots/many.png) |
-| **Needs input**: the session waiting on a permission prompt goes to the top and its pill pulses; the frame turns amber. Under each finished session, a line of what is left for you to do. | **Many sessions** across four machines (one switched off), with the plan's usage gauges top right. |
-| ![A tapped row is highlighted and says the window was raised](docs/screenshots/tap-raised.png) | ![Tapping a machine in the left-hand leg lists only its sessions](docs/screenshots/filter.png) |
-| **Tap a row** and the hub raises that session's terminal window on its machine. | **Tap a machine** in the left-hand leg to list only its sessions. |
-| ![The plus button opened a new session](docs/screenshots/new-opened.png) | ![The hub cannot be reached: the list is withdrawn](docs/screenshots/lost.png) |
-| **+** opens a new Claude Code session on your desktop. | **No link**: when the hub stops answering, the list is withdrawn rather than left stale. |
+| ![A session needs input: its pill pulses and the elbows turn amber](docs/screenshots/mixed.png) | ![A tapped row is highlighted and says the window was raised](docs/screenshots/tap-raised.png) |
+| **Needs input**: the session waiting on a permission prompt goes to the top and its pill pulses; the frame turns amber. Under each finished session, a line of what is left for you to do. | **Tap a row** and the hub raises that session's terminal window on its machine. |
+| ![Tapping a machine in the left-hand leg lists only its sessions](docs/screenshots/filter.png) | ![The plus button opened a new session](docs/screenshots/new-opened.png) |
+| **Tap a machine** in the left-hand leg to list only its sessions. | **+** opens a new Claude Code session on your desktop. |
 
 The screenshots come from the simulator in `firmware/sim`, which compiles the
 firmware's own UI code on the desktop, so they are what the panel shows.

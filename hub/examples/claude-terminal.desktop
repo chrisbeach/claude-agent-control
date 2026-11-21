@@ -1,0 +1,17 @@
+# A desktop launcher for the display's "+" button: a terminal running Claude Code.
+#   1. Copy claude-terminal.sh to ~/bin/ (chmod +x) and this file to
+#      ~/.local/share/applications/ on the machine named by AGENT_CONTROL_NEW_SESSION_HOST.
+#   2. Replace YOU below with your user name (desktop entries do not expand ~ or $HOME).
+#   3. Set AGENT_CONTROL_NEW_SESSION_LAUNCHER=claude-terminal on the hub.
+#
+# The hub starts the Exec command as a systemd user service and checks a second
+# later that it is still running, so the terminal must stay in the foreground until
+# its window closes: Ptyxis needs -s (standalone), GNOME Terminal --wait, e.g.
+#   Exec=gnome-terminal --wait -- /home/YOU/bin/claude-terminal.sh
+[Desktop Entry]
+Type=Application
+Name=Claude Code
+Comment=A terminal running Claude Code in ~/dev
+Exec=ptyxis -s -- /home/YOU/bin/claude-terminal.sh
+Terminal=false
+Categories=Development;

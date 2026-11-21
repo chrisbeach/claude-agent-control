@@ -1,0 +1,8 @@
+# Name,   Type, SubType, Offset,   Size, Flags
+# Two app slots so the running image can download the next one (OTA) and the
+# bootloader can fall back if the new one never confirms itself.
+nvs,      data, nvs,     0x9000,   0x6000,
+otadata,  data, ota,     0xf000,   0x2000,
+phy_init, data, phy,     0x11000,  0x1000,
+ota_0,    app,  ota_0,   0x20000,  6M,
+ota_1,    app,  ota_1,   0x620000, 6M,

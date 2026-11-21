@@ -1,0 +1,82 @@
+{
+ "rev": "idle00000001",
+ "now": 1795049400,
+ "counts": {
+  "working": 0,
+  "waiting": 0,
+  "done": 3
+ },
+ "usage": [
+  {
+   "label": "WK",
+   "percent": 33
+  },
+  {
+   "label": "FB",
+   "percent": 60
+  }
+ ],
+ "hosts": [
+  {
+   "name": "DEVBOX",
+   "up": true,
+   "sessions": 4,
+   "waiting": 0
+  },
+  {
+   "name": "BUILDBOX",
+   "up": true,
+   "sessions": 0,
+   "waiting": 0
+  },
+  {
+   "name": "LAPTOP",
+   "up": true,
+   "sessions": 0,
+   "waiting": 0
+  },
+  {
+   "name": "NAS",
+   "up": true,
+   "sessions": 0,
+   "waiting": 0
+  }
+ ],
+ "sessions": [
+  {
+   "key": "devbox:2720770",
+   "host": "DEVBOX",
+   "title": "FIX FLAKY CHECKOUT TESTS IN CI",
+   "status": "done",
+   "detail": "",
+   "since": 1795048680,
+   "tokens": "2.1M TOK"
+  },
+  {
+   "key": "devbox:2573487",
+   "host": "DEVBOX",
+   "title": "UPGRADE DEPENDENCIES",
+   "status": "done",
+   "detail": "",
+   "since": 1795047120,
+   "tokens": "608K TOK"
+  },
+  {
+   "key": "devbox:2453247",
+   "host": "DEVBOX",
+   "title": "MIGRATE CI TO THE NEW RUNNERS",
+   "status": "done",
+   "detail": "",
+   "since": 1795037160,
+   "tokens": "12M TOK"
+  },
+  {
+   "key": "devbox:2480204",
+   "host": "DEVBOX",
+   "title": "SCRATCH",
+   "status": "idle",
+   "detail": "",
+   "since": 1795049160
+  }
+ ]
+}

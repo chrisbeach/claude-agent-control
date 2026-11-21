@@ -1,0 +1,120 @@
+{
+ "rev": "mixed0000001",
+ "now": 1795049400,
+ "counts": {
+  "working": 2,
+  "waiting": 1,
+  "done": 3
+ },
+ "usage": [
+  {
+   "label": "WK",
+   "percent": 33
+  },
+  {
+   "label": "FB",
+   "percent": 60
+  }
+ ],
+ "hosts": [
+  {
+   "name": "DEVBOX",
+   "up": true,
+   "sessions": 5,
+   "waiting": 1
+  },
+  {
+   "name": "BUILDBOX",
+   "up": true,
+   "sessions": 1,
+   "waiting": 0
+  },
+  {
+   "name": "LAPTOP",
+   "up": true,
+   "sessions": 1,
+   "waiting": 0
+  },
+  {
+   "name": "NAS",
+   "up": true,
+   "sessions": 0,
+   "waiting": 0
+  }
+ ],
+ "sessions": [
+  {
+   "key": "devbox:2714904",
+   "host": "DEVBOX",
+   "title": "UPLOAD PROGRESS BAR",
+   "status": "waiting",
+   "detail": "PERMISSION PROMPT",
+   "since": 1795049280,
+   "todo": "APPROVE GIT PUSH ORIGIN MAIN",
+   "quiet": false,
+   "tokens": "2.1M TOK"
+  },
+  {
+   "key": "laptop:2720770",
+   "host": "LAPTOP",
+   "title": "FIX FLAKY CHECKOUT TESTS IN CI",
+   "status": "done",
+   "detail": "",
+   "since": 1795048680,
+   "todo": "REVIEW THE THREE SKIPPED TESTS",
+   "quiet": false,
+   "tokens": "608K TOK"
+  },
+  {
+   "key": "devbox:2453247",
+   "host": "DEVBOX",
+   "title": "MIGRATE CI TO THE NEW RUNNERS",
+   "status": "done",
+   "detail": "",
+   "since": 1794876660,
+   "todo": "SUMMARISING...",
+   "quiet": false,
+   "tokens": "12.3M TOK"
+  },
+  {
+   "key": "devbox:2573487",
+   "host": "DEVBOX",
+   "title": "UPGRADE DEPENDENCIES",
+   "status": "done",
+   "detail": "",
+   "since": 1795047120,
+   "todo": "NOTHING - ALL PACKAGES UP TO DATE",
+   "quiet": true,
+   "tokens": "45K TOK"
+  },
+  {
+   "key": "devbox:2716778",
+   "host": "DEVBOX",
+   "title": "ADD DARK MODE TO THE SETTINGS PAGE",
+   "status": "working",
+   "detail": "",
+   "since": 1795049370,
+   "quiet": false,
+   "tokens": "9.4M TOK"
+  },
+  {
+   "key": "buildbox:2728159",
+   "host": "BUILDBOX",
+   "title": "WRITE API DOCS FOR THE V2 ENDPOINTS",
+   "status": "working",
+   "detail": "",
+   "since": 1795048980,
+   "quiet": false,
+   "tokens": "850 TOK"
+  },
+  {
+   "key": "devbox:2480204",
+   "host": "DEVBOX",
+   "title": "SCRATCH",
+   "status": "idle",
+   "detail": "",
+   "since": 1795049160,
+   "quiet": false
+  }
+ ]
+}

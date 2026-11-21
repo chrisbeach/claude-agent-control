@@ -1,0 +1,37 @@
+{
+ "rev": "empty0000001",
+ "now": 1795049400,
+ "counts": {
+  "working": 0,
+  "waiting": 0,
+  "done": 0
+ },
+ "usage": [],
+ "hosts": [
+  {
+   "name": "DEVBOX",
+   "up": true,
+   "sessions": 0,
+   "waiting": 0
+  },
+  {
+   "name": "BUILDBOX",
+   "up": true,
+   "sessions": 0,
+   "waiting": 0
+  },
+  {
+   "name": "LAPTOP",
+   "up": true,
+   "sessions": 0,
+   "waiting": 0
+  },
+  {
+   "name": "NAS",
+   "up": true,
+   "sessions": 0,
+   "waiting": 0
+  }
+ ],
+ "sessions": []
+}

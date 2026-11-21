@@ -1,0 +1,16 @@
+# hub
+hub/.venv/
+hub/.env
+__pycache__/
+.pytest_cache/
+
+# firmware
+firmware/secrets.ini
+firmware/.pio/
+firmware/sdkconfig.*
+!firmware/sdkconfig.defaults
+firmware/managed_components/
+firmware/dependencies.lock
+firmware/sim/build/
+firmware/sim/lvgl/
+firmware/sim/out/

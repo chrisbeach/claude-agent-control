@@ -47,7 +47,10 @@ esp_err_t wifi_start(const char *ssid, const char *password, const char *hostnam
     cfg.sta.pmf_cfg.capable = true;
     ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_STA));
     ESP_ERROR_CHECK(esp_wifi_set_config(WIFI_IF_STA, &cfg));
-    ESP_ERROR_CHECK(esp_wifi_set_ps(WIFI_PS_MIN_MODEM));
+    /* No modem sleep: asleep, the radio only wakes for the access point's DTIM beacons, so every packet to the
+     * board waits up to a beacon interval (~100-300 ms) — once for the TCP handshake of a tap's request, again
+     * for the hub's answer, and on every long-poll reply. The board runs off USB, and its backlight draws far more. */
+    ESP_ERROR_CHECK(esp_wifi_set_ps(WIFI_PS_NONE));
     return esp_wifi_start();
 }
 

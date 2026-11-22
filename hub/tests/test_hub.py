@@ -1,9 +1,11 @@
 import asyncio
 import json
 import os
+import pathlib
 import stat
 import subprocess
 import sys
+import tempfile
 import time
 
 import httpx
@@ -284,3 +286,32 @@ def test_a_stopped_session_gets_its_to_do_line_and_the_hubs_own_runs_are_not_sho
     assert [r["name"] for r in first] == ["DEV-1F"]
     assert first[0]["todo"] == "SUMMARISING..." and later[0]["todo"] == "PICK MOCKUP A, B OR C"
     assert len(asked) == 1
+
+
+def short_dir():
+    """A temporary directory short enough to hold SSH control sockets (pytest's tmp_path may not be)."""
+    return tempfile.TemporaryDirectory(prefix="ac", dir="/tmp")
+
+
+def test_a_hosts_commands_go_down_its_probes_ssh_connection():
+    with short_dir() as tmp:
+        hub = Hub(["devbox"], KEY, control_dir=f"{tmp}/ssh")
+        probe, command = hub.ssh("devbox", "python3 -", master=True), hub.ssh("devbox", "true")
+        socket = f"ControlPath={tmp}/ssh/%C"
+        assert probe[0] == "ssh" and probe[-2:] == ["devbox", "python3 -"]
+        assert socket in probe and "ControlMaster=auto" in probe  # the probe's ssh becomes the master
+        assert socket in command and "ControlMaster=no" in command  # a command uses it, never becomes one
+        assert not any("ControlPersist" in arg for arg in probe + command)  # the master goes with the probe
+        assert stat.S_IMODE(os.stat(f"{tmp}/ssh").st_mode) == 0o700
+
+
+def test_no_multiplexing_where_the_socket_path_would_be_too_long_for_ssh():
+    with short_dir() as tmp:
+        fits = tmp + "/" + "d" * (hub_module.UNIX_SOCKET_PATH_MAX - len(tmp) - 2 - hub_module.CONTROL_NAME_CHARS)
+        assert len(fits + "/" + "c" * hub_module.CONTROL_NAME_CHARS) == hub_module.UNIX_SOCKET_PATH_MAX
+        assert hub_module.control_path(fits) == fits + "/%C"
+        deep = pathlib.Path(fits + "d")  # one character more: ssh would refuse it
+        assert hub_module.control_path(str(deep)) == ""
+    hub = Hub(["devbox"], KEY, control_dir="")
+    assert not any(arg.startswith("Control") for arg in hub.ssh("devbox", "true", master=True))
+    assert not deep.exists()

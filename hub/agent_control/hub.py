@@ -57,11 +57,30 @@ MESSAGE_PREFIX = "agent-control: "
 COMMAND_TIMEOUT_SECONDS = 10   # a switch or a launch that has not answered by now is given up on
 MESSAGE_CHARS = 96             # the firmware's buffer for the line it shows
 SSH_OPTIONS = ("-T", "-o", "BatchMode=yes", "-o", "ConnectTimeout=8", "-o", "ServerAliveInterval=5", "-o", "ServerAliveCountMax=2")
+# A host's probe connection doubles as its SSH master (ControlMaster), so a tap's focus or launch command goes down
+# it instead of opening a connection of its own: no handshake, about 0.2 s sooner on the desk. No ControlPersist: the
+# master is the probe's own ssh and goes when it does; while a probe is down, a command connects on its own.
+CONTROL_DIR = "~/.cache/agent-control/ssh"
+UNIX_SOCKET_PATH_MAX = 103   # sun_path is 104 bytes on macOS (108 on Linux), with the NUL; ssh refuses a longer ControlPath
+CONTROL_NAME_CHARS = 40      # ssh's %C: a SHA-1, in hex
+
+
+def control_path(directory):
+    """Where the hub's SSH masters listen, "<directory>/%C"; "" (every command connects on its own) when there is no
+    directory, or a socket in it would be too long for ssh, which would then refuse to connect at all."""
+    if not directory:
+        return ""
+    path = pathlib.Path(directory).expanduser()
+    if len(str(path)) + 1 + CONTROL_NAME_CHARS > UNIX_SOCKET_PATH_MAX:
+        log.warning("%s is too long a path for SSH control sockets; every command connects on its own", path)
+        return ""
+    return str(path / "%C")
 
 
 class Hub:
     def __init__(self, host_names, device_key, interval=3.0, prometheus="", new_session_host="", new_session_launcher="",
-                 claude="", todo_dir="~/.cache/agent-control/todo", focus_command="", usage_labels=None):
+                 claude="", todo_dir="~/.cache/agent-control/todo", focus_command="", usage_labels=None,
+                 control_dir=CONTROL_DIR):
         if not device_key:
             raise ValueError("a device key is required")
         self.hosts = [fleet.HostSnapshot(name) for name in host_names]
@@ -71,6 +90,7 @@ class Hub:
         self.usage_labels = fleet.USAGE_LABELS if usage_labels is None else usage_labels
         self.new_session_host, self.new_session_launcher = new_session_host, new_session_launcher
         self.focus_command = focus_command
+        self.control_path = control_path(control_dir)
         self.tracker = fleet.Tracker()
         # The to-do line of a stopped session, made with this host's `claude -p`; no binary named = no lines.
         self.todos = todo.Todos(claude, todo_dir, self.publish) if claude else None
@@ -118,6 +138,15 @@ class Hub:
 
     # ---- probes ----
 
+    def ssh(self, host_name, command, master=False):
+        """The ssh command line that runs `command` on another host. The probe's (`master`) becomes the host's SSH
+        master when none is listening; the others go down the master when one is, and connect on their own when not."""
+        options = list(SSH_OPTIONS)
+        if self.control_path:
+            pathlib.Path(self.control_path).parent.mkdir(mode=0o700, parents=True, exist_ok=True)
+            options += ["-o", f"ControlPath={self.control_path}", "-o", f"ControlMaster={'auto' if master else 'no'}"]
+        return ["ssh", *options, host_name, command]
+
     async def _spawn(self, host):
         if host.name == self.local_name:
             return await asyncio.create_subprocess_exec(
@@ -125,7 +154,7 @@ class Hub:
                 stdin=asyncio.subprocess.DEVNULL, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.DEVNULL)
         with PROBE_PATH.open("rb") as script:  # ssh hands the file to the far python as its program
             return await asyncio.create_subprocess_exec(
-                "ssh", *SSH_OPTIONS, host.name, REMOTE_COMMAND.format(interval=self.interval),
+                *self.ssh(host.name, REMOTE_COMMAND.format(interval=self.interval), master=True),
                 stdin=script, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.DEVNULL)
 
     async def watch(self, host):
@@ -225,7 +254,7 @@ class Hub:
     async def run_on(self, host_name, command, stdin=asyncio.subprocess.DEVNULL):
         """Runs a shell command on a host: here when it is the hub's own, over SSH otherwise. Returns
         (exit status, stderr); (None, "") when it has not finished within COMMAND_TIMEOUT_SECONDS."""
-        argv = ["sh", "-c", command] if host_name == self.local_name else ["ssh", *SSH_OPTIONS, host_name, command]
+        argv = ["sh", "-c", command] if host_name == self.local_name else self.ssh(host_name, command)
         proc = await asyncio.create_subprocess_exec(*argv, stdin=stdin, stdout=asyncio.subprocess.DEVNULL, stderr=asyncio.subprocess.PIPE)
         try:
             _, err = await asyncio.wait_for(proc.communicate(), COMMAND_TIMEOUT_SECONDS)

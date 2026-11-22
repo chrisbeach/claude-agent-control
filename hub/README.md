@@ -3,7 +3,7 @@
 A small FastAPI service that knows every live Claude Code session on the machines
 you list, and serves them to the display.
 
-    display  --long poll-->  hub :8767  --probe-->  this machine, and others over SSH
+![The display long-polls the hub for sessions and sends taps back; the hub runs a probe on each machine, as a child process on its own and over SSH on the others](../docs/how-it-works.svg)
 
 - **Probe** (`agent_control/probe.py`, one file, standard library only): prints the
   machine's sessions as a JSON line every few seconds. The list is

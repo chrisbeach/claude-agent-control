@@ -55,11 +55,7 @@ so they are what the panel shows; the white circle marks where the finger touche
 
 ## How it works
 
-```
- Waveshare display ──long poll──▶ hub (FastAPI, :8767) ──▶ claude agents --json on this machine
-        ▲   taps: /api/focus, /api/new        │
-        └─────────────────────────────────────┴──ssh──▶ claude agents --json on your other machines
-```
+![The display long-polls the hub for sessions and sends taps back; the hub runs a probe on each machine, as a child process on its own and over SSH on the others](docs/how-it-works.svg)
 
 - **`hub/`** (Python): runs a small probe on each machine every 3 seconds: locally
   for its own machine, over SSH for the others (the probe script is piped to

@@ -92,6 +92,7 @@ that spacing each sit over their own count.
 ## Simulator
 
     cd sim && make png        # out/<scene>.png and out/all-states.png
+    cd sim && make gif        # out/<demo>.gif: the README's animations
 
 A headless desktop build of the same `shared/ui.c` and `shared/fleet.c`, drawn by
 LVGL into a frame buffer: the screenshots are the real screen, not a mock-up. It
@@ -99,7 +100,11 @@ clones LVGL at the version the firmware pins and compiles cJSON from the ESP-IDF
 package PlatformIO installed (override `CJSON_DIR` if yours is elsewhere); it needs
 gcc, make and Pillow. Fixtures in `sim/fixtures/` are hub answers; scenes are listed
 in `sim/render.py`. `build/sim <fixture> none out.raw` also prints whether that fleet
-would hold the backlight on. The clock is shown in UTC; `TZ=... make png` for another
+would hold the backlight on. The demos for `make gif`, also in `render.py`, are steps
+played through a simulated touch screen (`wait:MS`, `tap:row:N`, `tap:host:NAME`,
+`tap:plus`, and the hub's answers `raised`, `refused`, `opened`; see `sim_main.c`), so
+a tap reaches the UI as a press and release, as on the board; a circle is drawn where
+the finger touched. The clock is shown in UTC; `TZ=... make png` for another
 zone. After editing a header, `make clean`.
 
 ## Layout

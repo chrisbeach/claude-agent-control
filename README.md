@@ -12,17 +12,18 @@ small hub that watches the sessions on each of your machines with `claude agents
 <sub>The board links in this README are Amazon affiliate links: as an Amazon Associate
 I earn from qualifying purchases.</sub>
 
-![Agent Control: two sessions working, three done, one idle](docs/screenshots/calm.png)
+![Agent Control: two sessions working, three done, one idle](docs/screenshots/calm.gif)
 
 | | |
 |---|---|
-| ![A session needs input: its pill pulses and the elbows turn amber](docs/screenshots/mixed.png) | ![A tapped row is highlighted and says the window was raised](docs/screenshots/tap-raised.png) |
-| **Needs input**: the session waiting on a permission prompt goes to the top and its pill pulses; the frame turns amber. Under each finished session, a line of what is left for you to do. | **Tap a row** and the hub raises that session's terminal window on its machine. |
-| ![Tapping a machine in the left-hand leg lists only its sessions](docs/screenshots/filter.png) | ![The plus button opened a new session](docs/screenshots/new-opened.png) |
-| **Tap a machine** in the left-hand leg to list only its sessions. | **+** opens a new Claude Code session on your desktop. |
+| ![A session needs input: its pill pulses and the elbows turn amber](docs/screenshots/mixed.gif) | ![A row is tapped: it is highlighted, says OPENING, then that the window was raised](docs/screenshots/tap.gif) |
+| **Needs input**: the session waiting on a permission prompt goes to the top and its pill pulses; the frame turns amber. Under each finished session, a line of what is left for you to do. | **Tap a row** and the hub raises that session's terminal window on its machine; the row says so, then goes back to normal. |
+| ![Machines in the left-hand leg are tapped in turn: each lists only its sessions, and a second tap lists them all again](docs/screenshots/hosts.gif) | ![The plus button is tapped: it pulses while the session opens, then says it opened](docs/screenshots/new.gif) |
+| **Tap a machine** in the left-hand leg to list only its sessions; tap it again to list them all. | **+** opens a new Claude Code session on your desktop. |
 
-The screenshots come from the simulator in `firmware/sim`, which compiles the
-firmware's own UI code on the desktop, so they are what the panel shows.
+These animations come from the simulator in `firmware/sim`, which compiles the
+firmware's own UI code on the desktop and taps it through a simulated touch screen,
+so they are what the panel shows; the white circle marks where the finger touched.
 
 ## What it shows
 

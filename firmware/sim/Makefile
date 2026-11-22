@@ -1,5 +1,6 @@
 # Desktop renderer for the display's UI: the same ui.c and fleet.c as the firmware,
-# drawn by LVGL into a frame buffer and saved as PNGs. `make png` writes out/*.png.
+# drawn by LVGL into a frame buffer and saved as PNGs. `make png` writes out/*.png;
+# `make gif` plays the README's demos through a simulated touch screen into out/*.gif.
 #   LVGL is cloned at the version the firmware pins (src/idf_component.yml).
 #   cJSON comes from the ESP-IDF package PlatformIO installed; override CJSON_DIR if needed.
 LVGL_TAG ?= v9.3.0
@@ -41,7 +42,10 @@ build/cJSON.o: $(CJSON_DIR)/cJSON.c
 png: all
 	python3 render.py
 
+gif: all
+	python3 render.py --gif
+
 clean:
 	rm -rf build out
 
-.PHONY: all png clean
+.PHONY: all png gif clean

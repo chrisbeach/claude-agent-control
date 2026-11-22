@@ -14,12 +14,24 @@ I earn from qualifying purchases.</sub>
 
 ![Agent Control: two sessions working, three done, one idle](docs/screenshots/calm.gif)
 
-| | |
-|---|---|
-| ![A session needs input: its pill pulses and the elbows turn amber](docs/screenshots/mixed.gif) | ![A row is tapped: it is highlighted, says OPENING, then that the window was raised](docs/screenshots/tap.gif) |
-| **Needs input**: the session waiting on a permission prompt goes to the top and its pill pulses; the frame turns amber. Under each finished session, a line of what is left for you to do. | **Tap a row** and the hub raises that session's terminal window on its machine; the row says so, then goes back to normal. |
-| ![Machines in the left-hand leg are tapped in turn: each lists only its sessions, and a second tap lists them all again](docs/screenshots/hosts.gif) | ![The plus button is tapped: it pulses while the session opens, then says it opened](docs/screenshots/new.gif) |
-| **Tap a machine** in the left-hand leg to list only its sessions; tap it again to list them all. | **+** opens a new Claude Code session on your desktop. |
+<table>
+<tr>
+<td width="50%"><img src="docs/screenshots/mixed.gif" width="100%" alt="A session needs input: its pill pulses and the elbows turn amber"></td>
+<td width="50%"><img src="docs/screenshots/tap.gif" width="100%" alt="A row is tapped: it is highlighted, says OPENING, then that the window was raised"></td>
+</tr>
+<tr>
+<td width="50%" valign="top"><strong>Needs input</strong>: the session waiting on a permission prompt goes to the top and its pill pulses; the frame turns amber. Under each finished session, a line of what is left for you to do.</td>
+<td width="50%" valign="top"><strong>Tap a row</strong> and the hub raises that session's terminal window on its machine; the row says so, then goes back to normal.</td>
+</tr>
+<tr>
+<td width="50%"><img src="docs/screenshots/hosts.gif" width="100%" alt="Machines in the left-hand leg are tapped in turn: each lists only its sessions, and a second tap lists them all again"></td>
+<td width="50%"><img src="docs/screenshots/new.gif" width="100%" alt="The plus button is tapped: it pulses while the session opens, then says it opened"></td>
+</tr>
+<tr>
+<td width="50%" valign="top"><strong>Tap a machine</strong> in the left-hand leg to list only its sessions; tap it again to list them all.</td>
+<td width="50%" valign="top"><strong>+</strong> opens a new Claude Code session on your desktop.</td>
+</tr>
+</table>
 
 These animations come from the simulator in `firmware/sim`, which compiles the
 firmware's own UI code on the desktop and taps it through a simulated touch screen,

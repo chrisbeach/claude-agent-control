@@ -105,9 +105,11 @@ zone. After editing a header, `make clean`.
 ## Layout
 
 - `src/`: the ESP-IDF application. `board.c` (RGB panel, CH422G expander, GT911
-  touch, LVGL port), `wifi.c`, `fetch.c` (HTTP with the bearer key, a kept-alive
-  long-poll session), `ota.c` (status and update server, rollback), `leds.c`,
-  `main.c` (fetch loop, tap requests, backlight, `/screenshot` and `/tap`).
+  touch, LVGL port), `wifi.c` (no modem sleep: the radio stays awake, so a tap's
+  answer does not wait for the access point's next beacon), `fetch.c` (HTTP with the
+  bearer key, a kept-alive long-poll session), `ota.c` (status and update server,
+  rollback), `leds.c`, `main.c` (fetch loop, tap requests, backlight, `/screenshot`
+  and `/tap`).
 - `shared/`: compiled by both the firmware and the simulator. `fleet.c` (JSON to
   `ac_model_t`), `ui.c` (the LVGL screen), the embedded Antonio Bold TTF.
 - `sim/`: the desktop renderer.

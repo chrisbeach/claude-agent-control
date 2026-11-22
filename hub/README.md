@@ -16,6 +16,13 @@ you list, and serves them to the display.
   is piped over, so nothing has to be installed there). `agent_control/fleet.py` turns
   the reports into what the display prints: upper-cased, sorted, counted.
 
+A remote probe's `ssh` is also that machine's SSH master, with its control socket in
+`~/.cache/agent-control/ssh` on the hub's machine. A tap's focus command and the "+"
+launcher go down that connection, so they start without a new SSH handshake; when no
+probe to that machine is up, they connect on their own. If the hub user's home
+directory has too long a path for a Unix socket there (over 37 characters), the log
+says so and every command connects on its own.
+
 ## Install and run
 
 Needs Python 3.10 or later, and the `claude` CLI on every machine you list.

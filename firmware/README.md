@@ -1,8 +1,12 @@
 # Firmware
 
-ESP-IDF (via PlatformIO) firmware for the **Waveshare ESP32-S3-Touch-LCD-7**
-(800×480 capacitive touch, ESP32-S3 N16R8). It long-polls the hub's `/api/fleet`,
-so a change shows within a second, and draws the screen with LVGL 9.
+ESP-IDF (via PlatformIO) firmware for the
+**[Waveshare ESP32-S3-Touch-LCD-7](https://link.amazon/B098TS2q7)** (800×480
+capacitive touch, ESP32-S3 N16R8). It long-polls the hub's `/api/fleet`, so a change
+shows within a second, and draws the screen with LVGL 9.
+
+<sub>The board link is an Amazon affiliate link: as an Amazon Associate I earn from
+qualifying purchases.</sub>
 
 ## What it shows
 

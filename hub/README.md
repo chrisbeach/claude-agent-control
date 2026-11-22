@@ -57,7 +57,7 @@ explains each one):
 | `AGENT_CONTROL_PORT`, `AGENT_CONTROL_BIND` | `8767`, `0.0.0.0` | Where the hub listens. |
 | `AGENT_CONTROL_NEW_SESSION_HOST` | empty (no "+") | The machine whose desktop the display's "+" opens a new session on. |
 | `AGENT_CONTROL_NEW_SESSION_LAUNCHER` | empty | The `.desktop` launcher the "+" starts there (its id, e.g. `claude-terminal`). |
-| `AGENT_CONTROL_FOCUS_COMMAND` | empty (a tap only highlights) | The command a tap runs to raise a session's window; see below. |
+| `AGENT_CONTROL_FOCUS_COMMAND` | empty (a tap only highlights) | The command a tap runs to raise a session's window, with `{id}`, `{pid}`, `{state}` and `{title}` filled in; see below. |
 | `AGENT_CONTROL_CLAUDE` | the `claude` CLI, if found | The CLI that writes the to-do lines. Empty switches them off. |
 | `AGENT_CONTROL_PROMETHEUS` | empty (no gauges) | Prometheus base URL for the usage gauges; see below. |
 | `AGENT_CONTROL_USAGE_WINDOWS` | `seven_day=WK,seven_day_fable=FB,five_hour=5H` | Which allowance windows get a gauge, in order, and their labels (at most 3). |
@@ -100,13 +100,27 @@ exists. Restart the hub afterwards.
 ## Tap to raise a window
 
 A tap on a row runs `AGENT_CONTROL_FOCUS_COMMAND` on the session's own machine (in a
-shell there, or over SSH), with `{id}` replaced by the session id (a UUID) and `{pid}`
-by the `claude` process id. Both are validated before they reach the shell.
+shell there, or over SSH), with these filled in:
+
+- `{id}`: the session id (a UUID).
+- `{pid}`: the `claude` process id.
+- `{state}`: the row's state, one of `working`, `waiting` (shown as NEEDS INPUT),
+  `done`, `failed`, `running`, `idle` or `stopped`.
+- `{title}`: the row's title as the display shows it (capitals, plain ASCII), already
+  shell-quoted into one word by the hub. Use it bare, not inside quotes of your own.
+
+The id and pid are validated before they reach the shell, and the fields are filled
+in one pass, so nothing in a title is itself filled in.
 
 - Exit 0: the display shows WINDOW RAISED ON <HOST>.
 - Otherwise the display shows the command's own reason if it printed one on stderr as
   `agent-control: <reason>` (anything after ` — ` is dropped), else COULD NOT RAISE
   THE WINDOW. Exit 127 shows THE FOCUS COMMAND IS NOT INSTALLED.
+
+`{state}` and `{title}` let a focus tool mark the window it raised as the row it came
+from, for example outline it in the state's colour with the title:
+
+    AGENT_CONTROL_FOCUS_COMMAND='$HOME/bin/raise-claude-window --pid {pid} --state {state} --title {title}'
 
 How to raise a window depends on the desktop, so no command is included. On X11,
 something like `wmctrl` or `xdotool` can find the terminal from the pid's parent

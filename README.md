@@ -202,7 +202,8 @@ All are hub settings in `hub/.env` (restart the hub after changing them); detail
 - **Tap raises the window**: set `AGENT_CONTROL_FOCUS_COMMAND` to a command that
   brings a session's terminal to the front, given its session id or process id. How
   to do that depends on your desktop (X11, tmux, a GNOME Shell extension on Wayland),
-  so none is included.
+  so none is included. It can also be given the row's state and title, say to
+  highlight the window it raised.
 - **What's left to do lines** are on by default when the hub machine has the `claude`
   CLI: one short Claude Haiku call on your plan per finished turn. Set
   `AGENT_CONTROL_CLAUDE=` (empty) to turn them off.

@@ -5,9 +5,12 @@ at a glance which ones are working, which are waiting for you, and which have
 finished and want their result checked. Tap a session to bring its terminal window
 to the front; tap **+** to start a new one.
 
-It runs on a **Waveshare ESP32-S3-Touch-LCD-7** (a 7" 800×480 touch screen with an
-ESP32-S3 on the back) in an LCARS-inspired style, fed by a small hub that watches the
-sessions on each of your machines with `claude agents --json`.
+It runs on a **[Waveshare ESP32-S3-Touch-LCD-7](https://link.amazon/B098TS2q7)** (a 7"
+800×480 touch screen with an ESP32-S3 on the back) in an LCARS-inspired style, fed by a
+small hub that watches the sessions on each of your machines with `claude agents --json`.
+
+<sub>The board links in this README are Amazon affiliate links: as an Amazon Associate
+I earn from qualifying purchases.</sub>
 
 ![Agent Control: two sessions working, three done, one idle](docs/screenshots/calm.png)
 
@@ -59,8 +62,8 @@ Anthropic directly.
 
 ### What you need
 
-- A **Waveshare ESP32-S3-Touch-LCD-7** (800×480; the plain "7" model, whose pins
-  this firmware uses) and a USB-C data cable.
+- A **[Waveshare ESP32-S3-Touch-LCD-7](https://link.amazon/B098TS2q7)** (800×480; the
+  plain "7" model, whose pins this firmware uses) and a USB-C data cable.
 - A **2.4 GHz Wi-Fi network** (the ESP32-S3 has no 5 GHz radio).
 - A Linux machine that is on whenever you want the display working, to run the hub.
   It needs Python 3.10+ and the Claude Code CLI, and SSH access (key-based, no

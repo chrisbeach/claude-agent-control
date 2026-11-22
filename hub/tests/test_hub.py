@@ -180,6 +180,26 @@ def test_only_a_session_id_and_a_pid_reach_the_shell(tmp_path):
     assert not (tmp_path / "called").exists()
 
 
+def test_a_tap_can_hand_the_rows_state_and_title_to_the_focus_command(tmp_path):
+    tool = tmp_path / "focus"
+    tool.write_text(f'#!/bin/sh\nprintf "%s\\n" "$@" > "{tmp_path}/called"\n')
+    tool.chmod(0o755)
+    assert focus(f"{tool} --highlight {{state}} {{title}} {{id}}").json()["ok"] is True
+    assert (tmp_path / "called").read_text().splitlines() == ["--highlight", "working", "AGENT CONTROL", SID]
+
+
+def test_a_title_reaches_the_focus_command_as_one_word_and_is_never_run(tmp_path, monkeypatch):
+    tool = tmp_path / "focus"
+    tool.write_text(f'#!/bin/sh\nprintf "%s\\n" "$@" > "{tmp_path}/called"\n')
+    tool.chmod(0o755)
+    title = "it's $(touch owned) `touch owned2` {id} \\ \"q\""
+    hostile = dict(SWITCHABLE, sessions=[dict(SWITCHABLE["sessions"][0], title=title)])
+    monkeypatch.chdir(tmp_path)  # where a command substitution would leave its file
+    assert focus(f"{tool} {{title}}", report=hostile).json()["ok"] is True
+    assert (tmp_path / "called").read_text().splitlines() == [title.upper()]  # {id} in a title stays as it is
+    assert not (tmp_path / "owned").exists() and not (tmp_path / "owned2").exists()
+
+
 def test_usage_windows_can_be_chosen_and_relabelled():
     assert hub_module.usage_labels_from(None) is None
     assert hub_module.usage_labels_from("seven_day=WK, seven_day_opus = OPUS1 ,junk,=X") == {"seven_day": "WK", "seven_day_opus": "OPUS"}

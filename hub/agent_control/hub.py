@@ -21,6 +21,7 @@ import logging
 import os
 import pathlib
 import re
+import shlex
 import socket
 import sys
 import time
@@ -44,9 +45,12 @@ USAGE_MAX_AGE_SECONDS = 1800   # the exporter refreshes every 5 min; older than 
 # The probe's interpreter on another host: a venv holding the Agent SDK (titles) when bootstrap-host.sh made one.
 REMOTE_COMMAND = 'p="$HOME/.local/share/agent-control/venv/bin/python"; [ -x "$p" ] || p=python3; exec "$p" -u - --interval {interval}'
 # A tap on the display raises the session's terminal window on its own desktop, by running the configured focus
-# command (AGENT_CONTROL_FOCUS_COMMAND) on the session's host with {id} (the session id) and {pid} (its process)
-# filled in. How a window can be raised depends on the desktop, so the hub ships no command of its own.
+# command (AGENT_CONTROL_FOCUS_COMMAND) on the session's host with {id} (the session id), {pid} (its process),
+# {state} (its row's state, e.g. done) and {title} (its row's title, shell-quoted) filled in. How a window can be
+# raised depends on the desktop, so the hub ships no command of its own.
 SESSION_ID = re.compile(r"\A[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\Z")
+# In one pass: a title that itself reads "{id}" is not filled in again.
+FOCUS_FIELDS = re.compile(r"\{(id|pid|state|title)\}")
 # The display's "+" opens a new session on one desktop: launch.py, piped to that host's python like the probe,
 # starts a desktop launcher (a .desktop entry whose command opens a terminal running `claude`) there.
 LAUNCH_PATH = pathlib.Path(__file__).with_name("launch.py")
@@ -290,7 +294,11 @@ class Hub:
         pid = raw.get("pid")
         if not SESSION_ID.match(session_id) or not (isinstance(pid, int) and pid > 0):  # both go into a shell command
             return {"ok": False, "message": "THAT SESSION HAS NO ID TO SWITCH TO"}
-        command = self.focus_command.replace("{id}", session_id).replace("{pid}", str(pid))  # not format(): shells use braces
+        state = self.tracker.status(key, raw)
+        if state is None:  # not shown on the display, so not a row anyone tapped
+            return {"ok": False, "message": "THAT SESSION HAS ENDED"}
+        fields = {"id": session_id, "pid": str(pid), "state": state, "title": shlex.quote(fleet.row_title(raw))}
+        command = FOCUS_FIELDS.sub(lambda m: fields[m.group(1)], self.focus_command)  # not format(): shells use braces
         status, err = await self.run_on(host.name, command)
         if status == 0:
             return {"ok": True, "message": f"WINDOW RAISED ON {where}"}

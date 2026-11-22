@@ -149,6 +149,11 @@ def quiet(status, todo):
     return status == DONE and todo.startswith("NOTHING")
 
 
+def row_title(raw):
+    """What a session's row is headed with: its title, else its name."""
+    return display_text(raw.get("title") or "", TITLE_CHARS) or display_text(raw.get("name") or "", NAME_CHARS) or "UNTITLED"
+
+
 def build(hosts, tracker, usage, now, todos=None, usage_labels=USAGE_LABELS):
     """The /api/fleet body without `rev` and `now`. `hosts` is the configured list of HostSnapshot, in display order;
     `usage` is {window: percent} or None; `todos` as todo_line takes it; `usage_labels` {window: label}, in order."""
@@ -168,7 +173,7 @@ def build(hosts, tracker, usage, now, todos=None, usage_labels=USAGE_LABELS):
             mine.append({
                 "key": key,
                 "host": label,
-                "title": display_text(raw.get("title") or "", TITLE_CHARS) or name or "UNTITLED",
+                "title": row_title(raw),
                 "name": name,  # the display goes by the title; kept for logs and tests
                 "status": status,
                 "detail": display_text(raw.get("waitingFor") or "", DETAIL_CHARS) if status == WAITING else "",

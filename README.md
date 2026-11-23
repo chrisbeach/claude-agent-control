@@ -84,7 +84,7 @@ Anthropic directly.
 
 ### 1. Start the hub
 
-On the always-on machine:
+On the always-on machine (not the Waveshare):
 
 ```bash
 git clone https://github.com/chrisbeach/claude-agent-control.git ~/claude-agent-control

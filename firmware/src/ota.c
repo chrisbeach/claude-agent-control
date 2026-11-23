@@ -5,6 +5,7 @@
 
 #include "cJSON.h"
 #include "esp_app_desc.h"
+#include "esp_heap_caps.h"
 #include "esp_http_server.h"
 #include "esp_log.h"
 #include "esp_netif.h"
@@ -106,6 +107,10 @@ static esp_err_t status_handler(httpd_req_t *req) {
     cJSON_AddStringToObject(json, "reset_reason", reset_reason_name());
     cJSON_AddNumberToObject(json, "uptime_s", (double)(esp_timer_get_time() / 1000000));
     cJSON_AddNumberToObject(json, "free_heap", (double)esp_get_free_heap_size());
+    /* internal RAM alone (no PSRAM): what Wi-Fi, lwIP, task stacks and every other small malloc live in */
+    cJSON_AddNumberToObject(json, "free_internal", (double)heap_caps_get_free_size(MALLOC_CAP_INTERNAL));
+    cJSON_AddNumberToObject(json, "largest_internal", (double)heap_caps_get_largest_free_block(MALLOC_CAP_INTERNAL));
+    cJSON_AddNumberToObject(json, "min_free_internal", (double)heap_caps_get_minimum_free_size(MALLOC_CAP_INTERNAL));
     /* input diagnostics: the backlight schedule keeps the panel lit while idle_ms < 60000 */
     cJSON_AddBoolToObject(json, "touch", board_touch_available());
     lv_display_t *disp = lv_display_get_default();

@@ -45,6 +45,12 @@ LVGL and Espressif's LCD, touch, mDNS and LED-strip components come from the ESP
 component registry on the first build. Every setting is compiled in, so changing
 `secrets.ini` means a rebuild and reflash.
 
+The first build also writes the full ESP-IDF configuration, from
+`sdkconfig.defaults`, to `sdkconfig.waveshare7`, and later builds keep that file. When
+a `git pull` changes `sdkconfig.defaults`, delete `sdkconfig.waveshare7` before
+building, or the old values stay in force. (A checkout from before LVGL's heap moved
+to PSRAM otherwise stops with `set CONFIG_LV_USE_CUSTOM_MALLOC=y`.)
+
 After a USB flash the chip can sit in ROM download mode (backlight on, screen black,
 nothing on the network): unplug the board and plug it back in once. From then on
 restarts and OTA updates behave. To boot it without replugging, for one boot only:
@@ -59,7 +65,7 @@ The board runs a small HTTP server on port 80, announced over mDNS as
 
 | | |
 |---|---|
-| `GET /status` | Running build (git describe, date, ELF sha), slot, OTA state, IP, uptime, free heap, touch state. |
+| `GET /status` | Running build (git describe, date, ELF sha), slot, OTA state, IP, uptime, free heap and free internal RAM, LVGL's heap (see [Hardware notes](#hardware-notes)), touch state. |
 | `POST /ota` | Body = `firmware.bin`: written to the other slot, then the board reboots into it. |
 | `GET /screenshot` | The screen as LVGL draws it, raw RGB565, 800×480. `python3 sim/render.py --raw shot.raw shot.png` makes a PNG. |
 | `POST /tap?row=N`, `POST /tap?new=1` | What a finger on row N, or on the "+", does. These are real taps: a window comes forward, a session opens. |
@@ -110,11 +116,11 @@ zone. After editing a header, `make clean`.
 ## Layout
 
 - `src/`: the ESP-IDF application. `board.c` (RGB panel, CH422G expander, GT911
-  touch, LVGL port), `wifi.c` (no modem sleep: the radio stays awake, so a tap's
-  answer does not wait for the access point's next beacon), `fetch.c` (HTTP with the
-  bearer key, a kept-alive long-poll session), `ota.c` (status and update server,
-  rollback), `leds.c`, `main.c` (fetch loop, tap requests, backlight, `/screenshot`
-  and `/tap`).
+  touch, LVGL port), `lv_mem_psram.c` (LVGL's heap, in PSRAM), `wifi.c` (no modem
+  sleep: the radio stays awake, so a tap's answer does not wait for the access point's
+  next beacon), `fetch.c` (HTTP with the bearer key, a kept-alive long-poll session),
+  `ota.c` (status and update server, rollback), `leds.c`, `main.c` (fetch loop, tap
+  requests, backlight, `/screenshot` and `/tap`).
 - `shared/`: compiled by both the firmware and the simulator. `fleet.c` (JSON to
   `ac_model_t`), `ui.c` (the LVGL screen), the embedded Antonio Bold TTF.
 - `sim/`: the desktop renderer.
@@ -130,6 +136,18 @@ EXIO3 = LCD reset. The backlight is on/off only (no dimming). LVGL draws in dire
 mode into the panel's two PSRAM frame buffers with a 10-line bounce buffer, so Wi-Fi
 traffic does not tear the picture. `rotate_180` instead draws into a canvas that is
 copied, reversed, into the panel's hidden buffer each frame.
+
+LVGL's own heap (objects, label text, the fonts' glyph caches) is in PSRAM too, through
+`src/lv_mem_psram.c`. On plain malloc its small blocks went to internal RAM, which
+Wi-Fi and lwIP depend on, and the glyph caches, which keep filling as new characters
+reach the screen, left them a few KB. `free_heap` in `/status` counts the 8 MB of
+PSRAM, so it cannot show that; `free_internal`, `largest_internal` (the largest free
+block) and `min_free_internal` (the low point since boot) can, and are the figures to
+check if Wi-Fi or the board's pages start failing after it has run a while. A healthy
+board keeps about 150 KB of internal RAM free, largest block about 70 KB. `lvgl_heap`
+is what LVGL holds in PSRAM (it grows as the glyph caches fill, then levels off);
+`lvgl_heap_fallbacks` counts blocks that had to go to internal RAM because PSRAM was
+full, and is 0 on a healthy board.
 
 If touch stops working after a knock, the touch panel's ribbon cable may have come
 loose. The firmware carries on without touch when the GT911 does not answer

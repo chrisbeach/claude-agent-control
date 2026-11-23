@@ -191,6 +191,10 @@ A new firmware that cannot reach the hub within 10 minutes rolls itself back to 
 previous one, so a bad `secrets.ini` cannot leave the board stranded once it has been
 flashed over USB with a working one.
 
+When a `git pull` changes `firmware/sdkconfig.defaults`, delete
+`firmware/sdkconfig.waveshare7` before the next build: the first build generates it
+from the defaults and later builds keep its old values.
+
 ### If something is wrong
 
 | The screen shows | Likely cause |

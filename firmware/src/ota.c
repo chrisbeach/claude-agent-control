@@ -15,6 +15,7 @@
 #include "lvgl.h"
 #include "mdns.h"
 #include "board.h"
+#include "lv_mem_psram.h"
 
 static const char *TAG = "ota";
 
@@ -111,6 +112,9 @@ static esp_err_t status_handler(httpd_req_t *req) {
     cJSON_AddNumberToObject(json, "free_internal", (double)heap_caps_get_free_size(MALLOC_CAP_INTERNAL));
     cJSON_AddNumberToObject(json, "largest_internal", (double)heap_caps_get_largest_free_block(MALLOC_CAP_INTERNAL));
     cJSON_AddNumberToObject(json, "min_free_internal", (double)heap_caps_get_minimum_free_size(MALLOC_CAP_INTERNAL));
+    /* LVGL's own heap, in PSRAM (lv_mem_psram.c): it grows as the glyph caches fill, then levels off */
+    cJSON_AddNumberToObject(json, "lvgl_heap", (double)lv_mem_psram_bytes());
+    cJSON_AddNumberToObject(json, "lvgl_heap_fallbacks", (double)lv_mem_psram_fallbacks());
     /* input diagnostics: the backlight schedule keeps the panel lit while idle_ms < 60000 */
     cJSON_AddBoolToObject(json, "touch", board_touch_available());
     lv_display_t *disp = lv_display_get_default();

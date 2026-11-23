@@ -32,7 +32,9 @@ CONFIG_LWIP_SNTP_UPDATE_DELAY=3600000
 # LVGL 9 via Kconfig (no lv_conf.h). The simulator mirrors these in sim/lv_conf.h.
 CONFIG_LV_CONF_SKIP=y
 CONFIG_LV_COLOR_DEPTH_16=y
-CONFIG_LV_USE_CLIB_MALLOC=y
+# LVGL's heap in PSRAM (src/lv_mem_psram.c): on plain malloc its small blocks, the glyph caches above all,
+# went to internal RAM and left Wi-Fi a few KB of it.
+CONFIG_LV_USE_CUSTOM_MALLOC=y
 CONFIG_LV_USE_CLIB_SPRINTF=y
 CONFIG_LV_USE_CLIB_STRING=y
 CONFIG_LV_DEF_REFR_PERIOD=33

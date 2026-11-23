@@ -1,5 +1,5 @@
 idf_component_register(
-    SRCS "main.c" "leds.c" "board.c" "wifi.c" "fetch.c" "ota.c"
+    SRCS "main.c" "leds.c" "board.c" "wifi.c" "fetch.c" "ota.c" "lv_mem_psram.c"
          "../shared/fleet.c" "../shared/ui.c"
     INCLUDE_DIRS "." "../shared"
     EMBED_FILES "../shared/fonts/Antonio-Bold.ttf"

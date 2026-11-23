@@ -3,7 +3,7 @@
 A small FastAPI service that knows every live Claude Code session on the machines
 you list, and serves them to the display.
 
-![The display long-polls the hub for sessions and sends taps back; the hub runs a probe on each machine, as a child process on its own and over SSH on the others](../docs/how-it-works.svg)
+![The display long-polls the hub for sessions and sends taps back; the hub runs a probe on each machine, as a child process on its own and over SSH on the others, and runs a tap's command on the session's machine (agent-control-window on a GNOME desktop)](../docs/how-it-works.svg)
 
 - **Probe** (`agent_control/probe.py`, one file, standard library only): prints the
   machine's sessions as a JSON line every few seconds. The list is
@@ -56,7 +56,7 @@ explains each one):
 | `AGENT_CONTROL_DEVICE_KEY_FILE` | `~/.config/agent-control/device_key` | The shared secret the display sends as a bearer token. `AGENT_CONTROL_DEVICE_KEY` gives the key itself instead. |
 | `AGENT_CONTROL_PORT`, `AGENT_CONTROL_BIND` | `8767`, `0.0.0.0` | Where the hub listens. |
 | `AGENT_CONTROL_NEW_SESSION_HOST` | empty (no "+") | The machine whose desktop the display's "+" opens a new session on. |
-| `AGENT_CONTROL_NEW_SESSION_LAUNCHER` | empty | The `.desktop` launcher the "+" starts there (its id, e.g. `claude-terminal`). |
+| `AGENT_CONTROL_NEW_SESSION_LAUNCHER` | empty | The `.desktop` launcher the "+" starts there (its id: `agent-control-new` on a GNOME desktop set up with `desktop/install.sh`, or your own, e.g. `claude-terminal`). |
 | `AGENT_CONTROL_FOCUS_COMMAND` | empty (a tap only highlights) | The command a tap runs to raise a session's window, with `{id}`, `{pid}`, `{state}` and `{title}` filled in; see below. |
 | `AGENT_CONTROL_CLAUDE` | the `claude` CLI, if found | The CLI that writes the to-do lines. Empty switches them off. |
 | `AGENT_CONTROL_PROMETHEUS` | empty (no gauges) | Prometheus base URL for the usage gauges; see below. |
@@ -112,21 +112,26 @@ shell there, or over SSH), with these filled in:
 The id and pid are validated before they reach the shell, and the fields are filled
 in one pass, so nothing in a title is itself filled in.
 
-- Exit 0: the display shows WINDOW RAISED ON <HOST>.
+- Exit 0: the display shows WINDOW RAISED ON \<HOST>.
 - Otherwise the display shows the command's own reason if it printed one on stderr as
   `agent-control: <reason>` (anything after ` — ` is dropped), else COULD NOT RAISE
-  THE WINDOW. Exit 127 shows THE FOCUS COMMAND IS NOT INSTALLED.
+  THE WINDOW. Exit 127 shows THE FOCUS COMMAND IS NOT INSTALLED ON \<HOST>.
 
 `{state}` and `{title}` let a focus tool mark the window it raised as the row it came
-from, for example outline it in the state's colour with the title:
+from, for example outline it in the state's colour with the title.
 
-    AGENT_CONTROL_FOCUS_COMMAND='$HOME/bin/raise-claude-window --pid {pid} --state {state} --title {title}'
+For a GNOME desktop (Wayland or X11), `desktop/` in this repository provides such a
+tool: `desktop/install.sh` installs a small GNOME Shell extension (under Wayland only
+code inside gnome-shell may raise a window) and the helper the hub runs, which raises
+the session's window and marks it that way. Install it on each machine with a desktop,
+then set, once for all of them:
 
-How to raise a window depends on the desktop, so no command is included. On X11,
-something like `wmctrl` or `xdotool` can find the terminal from the pid's parent
-process; tmux users can `tmux switch-client` to the pane running that pid. On
-GNOME under Wayland only code inside gnome-shell may raise a window, so it takes a
-shell extension that offers a D-Bus method for it.
+    AGENT_CONTROL_FOCUS_COMMAND='$HOME/.local/bin/agent-control-window raise {pid} --highlight {state} {title}'
+
+See [desktop/README.md](../desktop/README.md) for the steps and what its messages mean.
+On other desktops the command is yours to write. On X11, something like `wmctrl` or
+`xdotool` can find the terminal from the pid's parent process; tmux users can
+`tmux switch-client` to the pane running that pid.
 
 ## The "+" button: a new session
 
@@ -137,8 +142,13 @@ service (`systemd-run --user`), so the terminal gets the desktop session's
 environment (display, session bus) rather than the SSH connection's, and outlives it.
 It answers once the terminal has stayed up for a second; when it cannot (nobody
 logged in at the desktop, no such launcher) it says why in one line, which the
-display prints. `examples/claude-terminal.desktop` and `examples/claude-terminal.sh`
-are a starting point. Needs a systemd-based Linux desktop.
+display prints. Needs a systemd-based Linux desktop.
+
+On a GNOME desktop, `desktop/install.sh` writes a launcher for this,
+`agent-control-new`: a terminal running `claude`, raised and marked like a tapped
+session's window ([desktop/README.md](../desktop/README.md)). Elsewhere,
+`examples/claude-terminal.desktop` and `examples/claude-terminal.sh` are a starting
+point.
 
 ## What is left to do
 

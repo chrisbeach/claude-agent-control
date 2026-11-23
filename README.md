@@ -55,7 +55,7 @@ so they are what the panel shows; the white circle marks where the finger touche
 
 ## How it works
 
-![The display long-polls the hub for sessions and sends taps back; the hub runs a probe on each machine, as a child process on its own and over SSH on the others](docs/how-it-works.svg)
+![The display long-polls the hub for sessions and sends taps back; the hub runs a probe on each machine, as a child process on its own and over SSH on the others, and runs a tap's command on the session's machine (agent-control-window on a GNOME desktop)](docs/how-it-works.svg)
 
 - **`hub/`** (Python): runs a small probe on each machine every 3 seconds: locally
   for its own machine, over SSH for the others (the probe script is piped to
@@ -63,6 +63,10 @@ so they are what the panel shows; the white circle marks where the finger touche
   display, holding each request until something changes. See [hub/README.md](hub/README.md).
 - **`firmware/`** (C, ESP-IDF + LVGL, built with PlatformIO): draws the screen, sends
   taps back to the hub, updates itself over Wi-Fi. See [firmware/README.md](firmware/README.md).
+- **`desktop/`** (a GNOME Shell extension and a Python helper; optional): for a
+  machine with a GNOME desktop, the command a tap runs there, which brings the
+  session's terminal window to the front and marks it, and a launcher for the **+**.
+  See [desktop/README.md](desktop/README.md).
 
 The display only holds a shared device key; it never talks to your machines or to
 Anthropic directly.
@@ -196,7 +200,7 @@ flashed over USB with a working one.
 | CONTACTING THE HUB, then NO LINK TO THE HUB | `hub_url` is wrong, the hub is not running, or a firewall blocks port 8767. |
 | HUB ERROR: WRONG DEVICE KEY | `device_key` does not match the hub's key file. |
 | A machine's block says OFF | The hub cannot run `ssh <name>` non-interactively, or `claude` is not found there: see `curl localhost:8767/healthz` on the hub. |
-| Tapping a row says WINDOW SWITCHING IS NOT SET UP ON THE HUB | Expected until you set `AGENT_CONTROL_FOCUS_COMMAND`: see below. |
+| Tapping a row says WINDOW SWITCHING IS NOT SET UP ON THE HUB | Expected until you set `AGENT_CONTROL_FOCUS_COMMAND`: for a GNOME desktop, see [desktop/README.md](desktop/README.md) (its own table covers the messages after that); otherwise see [Optional extras](#optional-extras). |
 
 ## Optional extras
 
@@ -205,13 +209,23 @@ All are hub settings in `hub/.env` (restart the hub after changing them); detail
 
 - **+ opens a new session**: set `AGENT_CONTROL_NEW_SESSION_HOST` and
   `AGENT_CONTROL_NEW_SESSION_LAUNCHER` to a machine with a Linux desktop and a
-  `.desktop` launcher that opens a terminal running `claude`
-  (`hub/examples/claude-terminal.desktop` is a starting point).
+  `.desktop` launcher there that opens a terminal running `claude`. On a GNOME
+  desktop, `desktop/install.sh` writes one, `agent-control-new`, whose terminal is
+  raised and marked as it opens; elsewhere, `hub/examples/claude-terminal.desktop` is
+  a starting point.
 - **Tap raises the window**: set `AGENT_CONTROL_FOCUS_COMMAND` to a command that
-  brings a session's terminal to the front, given its session id or process id. How
-  to do that depends on your desktop (X11, tmux, a GNOME Shell extension on Wayland),
-  so none is included. It can also be given the row's state and title, say to
-  highlight the window it raised.
+  brings a session's terminal to the front, given its session id or process id (and
+  the row's state and title, if it uses them). On a GNOME desktop (Wayland or X11),
+  `desktop/install.sh` installs one that raises the window and marks it in the colour
+  of the session's state, with its title: see [desktop/README.md](desktop/README.md).
+  On other desktops the command is yours to write (on X11, say, with `wmctrl` or
+  `xdotool`; under tmux, `tmux switch-client`).
+
+  ![Three Claude Code terminals on a GNOME desktop. Each tap on the display brings one to the front: two rings pulse out from it, then an outline and a tab with the session's title stay, green for done, amber for needs input, pale blue for working](docs/screenshots/desktop.gif)
+
+  Three taps on a GNOME desktop: each window comes to the front and keeps a mark in
+  its state's colour (green DONE, amber NEEDS INPUT, pale blue WORKING) until the
+  focus moves on.
 - **What's left to do lines** are on by default when the hub machine has the `claude`
   CLI: one short Claude Haiku call on your plan per finished turn. Set
   `AGENT_CONTROL_CLAUDE=` (empty) to turn them off.

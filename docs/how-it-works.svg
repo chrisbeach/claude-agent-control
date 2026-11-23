@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="920" height="386" viewBox="0 24 920 386" role="img" aria-labelledby="t d">
   <title id="t">How Agent Control works</title>
-  <desc id="d">The display long-polls the hub for sessions and sends taps back to it. The hub runs a probe on each machine, as a child process on its own machine and piped over SSH to the others, and runs a tap's command on the session's machine.</desc>
+  <desc id="d">The display long-polls the hub for sessions and sends taps back to it. The hub runs a probe on each machine, as a child process on its own machine and piped over SSH to the others, and runs a tap's command on the session's machine: on a GNOME desktop, the agent-control-window helper from desktop/, which raises and marks the session's window.</desc>
   <defs>
     <style>
       .title { font: 700 14px -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif; letter-spacing: 1.5px; fill: #ffcc99; }
@@ -42,18 +42,20 @@
   <!-- This machine -->
   <rect class="panel" x="700" y="58" width="188" height="110" rx="14"/>
   <rect x="700" y="58" width="10" height="110" rx="5" fill="#9999ff"/>
-  <text class="title" x="726" y="90">THIS MACHINE</text>
-  <text class="body"  x="726" y="116">probe: child process</text>
-  <text class="mono"  x="726" y="142">claude agents --json</text>
+  <text class="title" x="726" y="86">THIS MACHINE</text>
+  <text class="body"  x="726" y="109">probe: child process</text>
+  <text class="mono"  x="726" y="128">claude agents --json</text>
+  <text class="body"  x="726" y="151">tap: <tspan class="mono" style="font-size:10.5px">agent-control-window</tspan></text>
 
   <!-- Other machines (stacked) -->
   <rect x="714" y="218" width="188" height="110" rx="14" fill="#0a0a0a" stroke="#1f1f1f" stroke-width="1.5"/>
   <rect x="707" y="225" width="188" height="110" rx="14" fill="#0c0c0c" stroke="#262626" stroke-width="1.5"/>
   <rect class="panel" x="700" y="232" width="188" height="110" rx="14"/>
   <rect x="700" y="232" width="10" height="110" rx="5" fill="#9999ff"/>
-  <text class="title" x="726" y="264">OTHER MACHINES</text>
-  <text class="body"  x="726" y="290">probe: piped over SSH</text>
-  <text class="dim"   x="726" y="316">nothing to install there</text>
+  <text class="title" x="726" y="260">OTHER MACHINES</text>
+  <text class="body"  x="726" y="283">probe: piped over SSH</text>
+  <text class="dim"   x="726" y="302">nothing to install for it</text>
+  <text class="body"  x="726" y="325">tap: <tspan class="mono" style="font-size:10.5px">agent-control-window</tspan></text>
 
   <!-- Display ⇄ hub -->
   <text class="tag"  x="307" y="161" text-anchor="middle" fill="#ff9900">TAPS</text>

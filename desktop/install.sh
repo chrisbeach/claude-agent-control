@@ -2,9 +2,9 @@
 # Installs the desktop side of Agent Control for the current user, on a machine
 # with a GNOME desktop whose Claude Code sessions the display shows. No sudo.
 #
-#   desktop/install.sh                          install, or update in place
+#   desktop/install.sh                            install, or update in place
 #   desktop/install.sh --terminal 'alacritty -e'  the "+" opens this terminal (default: ptyxis -s --)
-#   desktop/install.sh --uninstall              remove everything it installed
+#   desktop/install.sh --uninstall                remove everything it installed
 #
 # It installs:
 #   the Agent Control GNOME Shell extension, which raises and marks windows;
@@ -32,7 +32,7 @@ while [ $# -gt 0 ]; do
         --terminal) [ $# -ge 2 ] || { echo "--terminal takes a command, e.g. --terminal 'alacritty -e'" >&2; exit 2; }
                     terminal="$2"; shift 2 ;;
         --uninstall) uninstall=1; shift ;;
-        *) sed -n '2,10p' "$0" | sed 's/^# \{0,1\}//' >&2; exit 2 ;;
+        *) sed -n '2,7p' "$0" | sed 's/^# \{0,1\}//' >&2; exit 2 ;;
     esac
 done
 

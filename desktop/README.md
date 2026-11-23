@@ -67,11 +67,11 @@ it has a desktop.
    was tapped, filling in that session's process id, state and title. Keep the single
    quotes so that `$HOME` is expanded there, and leave `{title}` bare: the hub quotes it.
 
-6. Tap a row. The display says WINDOW RAISED ON <MACHINE>, and the window is marked on
+6. Tap a row. The display says WINDOW RAISED ON \<MACHINE>, and the window is marked on
    that machine's screen.
 
 On a machine without a desktop (a server you reach over SSH), a tap says THE FOCUS
-COMMAND IS NOT INSTALLED ON <MACHINE>; there is no window to raise there.
+COMMAND IS NOT INSTALLED ON \<MACHINE>; there is no window to raise there.
 
 ### The + button
 
@@ -127,7 +127,7 @@ The display prints the helper's own reason:
 | THE AGENT CONTROL GNOME EXTENSION IS NOT RUNNING | It was installed but you have not logged out and in since, or it is switched off in the Extensions app (or user extensions are off altogether). |
 | LOG OUT AND BACK IN TO FINISH SETTING UP | The extension was updated; gnome-shell is still running the old version. |
 | NOBODY IS LOGGED IN TO THE DESKTOP HERE | No desktop session on that machine for the hub's user. |
-| THE FOCUS COMMAND IS NOT INSTALLED ON <MACHINE> | `agent-control-window` is not in `~/.local/bin` on that machine: run `install.sh` there. |
+| THE FOCUS COMMAND IS NOT INSTALLED ON \<MACHINE> | `agent-control-window` is not in `~/.local/bin` on that machine: run `install.sh` there. |
 | THAT SESSION HAS NO TERMINAL WINDOW | A session running without a terminal (`claude -p`, a background run). |
 | ITS WINDOW COULD NOT BE SINGLED OUT | The session is in a background tab, or in a terminal multiplexer such as tmux that does not pass its panes' titles on to the window. |
 | THE DESKTOP KEPT THE FOCUS WHERE IT WAS | gnome-shell would not move the focus to that window. |

@@ -1,0 +1,16 @@
+{
+  "uuid": "agent-control@chrisbeach.github.io",
+  "name": "Agent Control",
+  "description": "For the Agent Control desk display of Claude Code sessions: brings a session's terminal window to the front when its row is tapped, and marks it in the display's colour for the session's state (two rings pulse out, then an outline and a tab with the session's title stay until the focus moves on). Under Wayland only code running inside gnome-shell can raise a window, so the agent-control-window helper asks this extension over D-Bus.",
+  "url": "https://github.com/chrisbeach/claude-agent-control",
+  "shell-version": [
+    "46",
+    "47",
+    "48",
+    "49",
+    "50"
+  ],
+  "session-modes": [
+    "user"
+  ]
+}

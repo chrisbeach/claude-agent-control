@@ -1,0 +1,343 @@
+#!/usr/bin/python3
+"""agent-control-window: bring a Claude Code session's terminal window to the
+front on a GNOME desktop, and mark it as the row tapped on the display.
+
+    agent-control-window raise <pid> [--highlight <state> <title>]
+    agent-control-window new [--highlight <state> <title>] [--terminal <command>] [<directory>]
+    agent-control-window check
+
+`raise` is the hub's AGENT_CONTROL_FOCUS_COMMAND: <pid> is the session's
+`claude` process. `new` is what the display's "+" launcher runs: a terminal in
+<directory> (default ~/dev, else ~) running `claude`, raised and marked once its
+window shows, and this program stays until the terminal closes. `check` says
+whether the Agent Control shell extension is loaded.
+
+States: waiting, failed, done, working, running, idle, stopped. The mark is
+drawn by the extension in the display's colour for the state: two rings pulse
+out from the window, then an outline and a tab with the title stay until
+something else takes the focus.
+
+On failure: exit 1 with one line on stderr, "agent-control: <reason>[ — <more>]".
+The hub shows the reason on the display.
+
+How a session's window is found. Nothing outside a terminal knows which window
+shows a given pty, so `raise` first asks for the one window owned by one of the
+session's parent processes, nearest first: the terminal itself, when it keeps
+one window per process. When that cannot single the window out (no parent owns
+a window, as under tmux, or one owns several, as GNOME Terminal's server does),
+it writes a one-off marker into the session's terminal title, asks for the
+window now showing it, and puts the title back. On GNOME under Wayland only code
+inside gnome-shell may raise a window, so the asking goes over D-Bus to the
+Agent Control extension (desktop/extension).
+
+Python standard library only. /usr/bin/python3, so that a conda or venv python
+first on PATH is not the one a desktop launcher or an SSH command picks up.
+"""
+from __future__ import annotations
+
+import os
+import re
+import secrets
+import shlex
+import shutil
+import subprocess
+import sys
+import time
+from pathlib import Path
+
+PREFIX = "agent-control: "
+BUS_NAME = "org.gnome.Shell.Extensions.AgentControl"
+OBJECT_PATH = "/org/gnome/Shell/Extensions/AgentControl"
+STATES = ("waiting", "failed", "done", "working", "running", "idle", "stopped")
+PTS = re.compile(r"\A/dev/pts/\d+\Z")
+CALL_TIMEOUT = 3
+TITLE_WAIT = 1.0   # the marker shows in the title in ~25 ms on an idle desktop; this covers a busy one
+WINDOW_WAIT = 5.0  # a new terminal's window maps well within this
+DEFAULT_TERMINAL = "ptyxis -s --"
+# Where the native installer puts the CLI, for when PATH is bare (a desktop
+# launcher, a systemd unit). CLAUDE_BIN overrides the search.
+CLAUDE_CANDIDATES = ("~/.local/bin/claude", "~/.claude/local/claude", "/usr/local/bin/claude")
+# Run in the new terminal as `sh -c HOLD sh <dir> <claude>`. A failure keeps the
+# window open, so its message can be read.
+HOLD = ('export PATH="$HOME/.local/bin:$PATH"; cd "$1" && shift && "$@"; s=$?\n'
+        'if [ "$s" -ne 0 ]; then echo; echo "claude exited with status $s. Press Enter to close."; read -r _; fi')
+
+
+class Failure(Exception):
+    """Something the person at the display should be told: a short reason, and more for a log."""
+
+    def __init__(self, reason: str, more: str = ""):
+        super().__init__(reason)
+        self.reason, self.more = reason, more
+
+
+# ---- talking to the extension ------------------------------------------------
+
+def gdbus() -> str:
+    """The system gdbus: a conda one first on PATH may be built without the session bus support."""
+    return "/usr/bin/gdbus" if os.access("/usr/bin/gdbus", os.X_OK) else (shutil.which("gdbus") or "gdbus")
+
+
+def use_session_bus() -> None:
+    """Run over SSH or from a service there is no DBUS_SESSION_BUS_ADDRESS, but the
+    desktop session's bus is at a fixed path: use that."""
+    if os.environ.get("DBUS_SESSION_BUS_ADDRESS"):
+        return
+    runtime = os.environ.get("XDG_RUNTIME_DIR") or f"/run/user/{os.getuid()}"
+    if Path(runtime, "bus").exists():
+        os.environ["DBUS_SESSION_BUS_ADDRESS"] = f"unix:path={runtime}/bus"
+
+
+def gvariant_string(text: str) -> str:
+    """`text` as a GVariant string literal, which is how gdbus parses its arguments."""
+    text = "".join(ch if ch.isprintable() else " " for ch in text)
+    return "'" + text.replace("\\", "\\\\").replace("'", "\\'") + "'"
+
+
+def call(method: str, *args: str) -> str:
+    """One call to the extension; its answer ('raised', 'notfound', ...)."""
+    if not os.environ.get("DBUS_SESSION_BUS_ADDRESS"):
+        raise Failure("Nobody is logged in to the desktop here", "no session bus found")
+    try:
+        done = subprocess.run(
+            [gdbus(), "call", "--session", "--timeout", str(CALL_TIMEOUT), "-d", BUS_NAME,
+             "-o", OBJECT_PATH, "-m", f"{BUS_NAME}.{method}", *args],
+            capture_output=True, text=True, timeout=CALL_TIMEOUT + 3, stdin=subprocess.DEVNULL)
+    except (OSError, subprocess.TimeoutExpired) as e:
+        raise Failure("Could not reach the desktop", str(e)[:200])
+    if done.returncode != 0:
+        if "UnknownMethod" in done.stderr:
+            raise Failure("Log out and back in to finish setting up",
+                          "an older version of the Agent Control extension is loaded; gnome-shell loads the new one at login")
+        if "ServiceUnknown" in done.stderr or "NameHasNoOwner" in done.stderr or "not provided" in done.stderr:
+            raise Failure("The Agent Control GNOME extension is not running",
+                          "install it with desktop/install.sh, then log out and back in")
+        raise Failure("Could not reach the desktop", done.stderr.strip()[:200])
+    match = re.match(r"\('([^']*)',\)", done.stdout.strip())
+    return match.group(1) if match else ""
+
+
+def highlight(mark: tuple[str, str] | None) -> None:
+    """Mark the window just raised. Best effort: it is in front either way."""
+    if mark is None:
+        return
+    state, title = mark
+    try:
+        call("Highlight", gvariant_string(state), gvariant_string(title))
+    except Failure:
+        pass
+
+
+# ---- finding a session's window ---------------------------------------------
+
+def parent_of(pid: int) -> int | None:
+    """From /proc/<pid>/stat. The command name is in parentheses and may itself contain ') '."""
+    try:
+        fields = Path(f"/proc/{pid}/stat").read_text().rsplit(")", 1)[1].split()
+        return int(fields[1])
+    except (OSError, IndexError, ValueError):
+        return None
+
+
+def ancestors(pid: int) -> list[int]:
+    """The process's parents, nearest first, short of pid 1."""
+    out = []
+    parent = parent_of(pid)
+    while parent is not None and parent > 1 and parent not in out:
+        out.append(parent)
+        parent = parent_of(parent)
+    return out
+
+
+def children_of(pid: int) -> list[int]:
+    try:
+        return [int(c) for c in Path(f"/proc/{pid}/task/{pid}/children").read_text().split()]
+    except (OSError, ValueError):
+        return []
+
+
+def descendants(pid: int) -> list[int]:
+    """The process and everything under it, nearest first."""
+    out, queue = [], [pid]
+    while queue:
+        current = queue.pop(0)
+        if current not in out:
+            out.append(current)
+            queue.extend(children_of(current))
+    return out
+
+
+def pty_of(pid: int) -> str | None:
+    """The terminal the process talks to, from its standard streams."""
+    for fd in (0, 1, 2):
+        try:
+            target = os.readlink(f"/proc/{pid}/fd/{fd}")
+        except OSError:
+            continue
+        if PTS.match(target):
+            return target
+    return None
+
+
+def by_process(pid: int) -> str:
+    """Raise the one window owned by one of the process's parents, nearest first."""
+    for parent in ancestors(pid):
+        verdict = call("FocusWindowByPid", str(parent))
+        if verdict != "notfound":
+            return verdict
+    return "notfound"
+
+
+def by_title(pty: str) -> str:
+    """Stamp a marker into the terminal's title, raise the window showing it, and put
+    the title back. The terminal's own title stack (XTWINOPS 22/23) does the putting
+    back, so whatever the session had there returns untouched."""
+    marker = f"agent-control {secrets.token_hex(4)}"
+    try:
+        fd = os.open(pty, os.O_WRONLY | os.O_NOCTTY)
+    except OSError:
+        return "notfound"
+    try:
+        os.write(fd, b"\x1b[22;0t")
+        deadline = time.monotonic() + TITLE_WAIT
+        while True:
+            # Written again on every round: a busy session repaints its own title.
+            os.write(fd, b"\x1b]2;" + marker.encode() + b"\x07")
+            time.sleep(0.04)
+            verdict = call("FocusWindowByTitle", gvariant_string(marker))
+            if verdict != "notfound" or time.monotonic() > deadline:
+                return verdict
+    finally:
+        os.write(fd, b"\x1b[23;0t")
+        os.close(fd)
+
+
+# ---- commands ----------------------------------------------------------------
+
+def take_highlight(args: list[str]) -> tuple[tuple[str, str] | None, list[str]]:
+    """`--highlight <state> <title>` anywhere among the arguments: ((state, title), the rest)."""
+    if "--highlight" not in args:
+        return None, args
+    at = args.index("--highlight")
+    if len(args) < at + 3 or args[at + 1] not in STATES:
+        raise Failure("Unrecognised --highlight", f"it takes a state ({', '.join(STATES)}) and a title")
+    return (args[at + 1], args[at + 2]), args[:at] + args[at + 3:]
+
+
+def cmd_raise(args: list[str]) -> int:
+    mark, args = take_highlight(args)
+    if len(args) != 1 or not re.fullmatch(r"[0-9]{1,10}", args[0]) or int(args[0]) <= 1:
+        raise Failure("Usage: agent-control-window raise <pid> [--highlight <state> <title>]")
+    pid = int(args[0])
+    if not Path(f"/proc/{pid}").exists():
+        raise Failure("That session is no longer running here")
+    pty = pty_of(pid)
+    if pty is None:
+        raise Failure("That session has no terminal window", "it runs without a terminal (a background or scripted run)")
+    # By the terminal's process first: it answers at once, where a title can only
+    # be waited for. By title when the process cannot single the window out.
+    verdict = by_process(pid)
+    if verdict in ("notfound", "ambiguous"):
+        verdict = by_title(pty)
+    if verdict == "raised":
+        highlight(mark)
+        return 0
+    if verdict == "refused":
+        raise Failure("The desktop kept the focus where it was")
+    raise Failure("Its window could not be singled out",
+                  "it may be in a background tab of a terminal: select its tab once")
+
+
+def find_claude() -> str | None:
+    if os.environ.get("CLAUDE_BIN"):
+        return os.environ["CLAUDE_BIN"]
+    found = shutil.which("claude")
+    if found:
+        return found
+    for candidate in CLAUDE_CANDIDATES:
+        path = os.path.expanduser(candidate)
+        if os.access(path, os.X_OK):
+            return path
+    return None
+
+
+def raise_when_shown(proc: subprocess.Popen) -> str:
+    """Raise the new terminal's window as soon as it maps: owned by the process
+    started, or by one of its children (a wrapper script). A window is listed a
+    moment before it can take the focus, so "refused" is asked again until the
+    time is up."""
+    deadline = time.monotonic() + WINDOW_WAIT
+    while proc.poll() is None:
+        verdicts = [call("FocusWindowByPid", str(pid)) for pid in descendants(proc.pid)]
+        settled = [v for v in verdicts if v not in ("notfound", "refused")]
+        if settled:
+            return settled[0]
+        if time.monotonic() > deadline:
+            return "refused" if "refused" in verdicts else "notfound"
+        time.sleep(0.1)
+    return "closed"
+
+
+def cmd_new(args: list[str]) -> int:
+    mark, args = take_highlight(args)
+    terminal = DEFAULT_TERMINAL
+    if "--terminal" in args:
+        at = args.index("--terminal")
+        if len(args) < at + 2:
+            raise Failure("--terminal takes a command, e.g. --terminal 'alacritty -e'")
+        terminal, args = args[at + 1], args[:at] + args[at + 2:]
+    if len(args) > 1:
+        raise Failure("Usage: agent-control-window new [--highlight <state> <title>] "
+                      "[--terminal <command>] [<directory>]")
+    if args:
+        directory = os.path.expanduser(args[0])
+    else:
+        directory = next((d for d in (os.path.expanduser("~/dev"), os.path.expanduser("~")) if os.path.isdir(d)), "/")
+    if not os.path.isdir(directory):
+        raise Failure("The new session's directory does not exist", directory)
+    claude = find_claude()
+    if claude is None:
+        raise Failure("The claude CLI was not found here")
+    try:
+        argv = shlex.split(terminal)
+    except ValueError as e:
+        raise Failure("The --terminal command does not parse", str(e))
+    try:
+        proc = subprocess.Popen([*argv, "/bin/sh", "-c", HOLD, "sh", directory, claude], stdin=subprocess.DEVNULL)
+    except OSError as e:
+        raise Failure(f"Could not open a terminal ({argv[0] if argv else 'none given'})", str(e)[:200])
+    # From here on the terminal is open whatever happens to its window: say why it
+    # is not in front (to the journal, under a launcher), and stay with it.
+    try:
+        verdict = raise_when_shown(proc)
+        if verdict == "raised":
+            highlight(mark)
+        elif verdict != "closed":
+            print(f"{PREFIX}The new terminal's window was not raised ({verdict})", file=sys.stderr)
+    except Failure as e:
+        print(PREFIX + e.reason + (f" — {e.more}" if e.more else ""), file=sys.stderr)
+    return proc.wait()
+
+
+def cmd_check(_args: list[str]) -> int:
+    """Whether the extension is loaded, in a sentence for a person."""
+    call("FocusWindowByPid", "1")  # raises Failure with the reason when it cannot be reached
+    print("The Agent Control extension is loaded: tapping a row can raise and mark its window.")
+    return 0
+
+
+def main(argv: list[str]) -> int:
+    commands = {"raise": cmd_raise, "new": cmd_new, "check": cmd_check}
+    if len(argv) < 2 or argv[1] not in commands:
+        print(__doc__.split("\n\n")[1], file=sys.stderr)
+        return 2
+    use_session_bus()
+    try:
+        return commands[argv[1]](argv[2:])
+    except Failure as e:
+        print(PREFIX + e.reason + (f" — {e.more}" if e.more else ""), file=sys.stderr)
+        return 1
+
+
+if __name__ == "__main__":
+    sys.exit(main(sys.argv))

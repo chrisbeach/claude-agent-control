@@ -25,7 +25,19 @@ says so and every command connects on its own.
 
 ## Install and run
 
-Needs Python 3.10 or later, and the `claude` CLI on every machine you list.
+The hub's own machine needs Python 3.10 or later. Every machine you list needs the
+`claude` CLI, and each of the others a `python3` for the probe. That one need not be
+3.10: the probe has been run on Python 3.9, a Mac's own.
+
+A Mac can be listed (tested with one: Apple Silicon, `claude` from the native
+installer, the hub on Linux). Its sessions are listed and counted like any other
+machine's, and with the Agent SDK ([Titles on other machines](#titles-on-other-machines))
+they have titles, the done/idle distinction and to-do lines. Nothing in this
+repository raises a window or opens a session on macOS, though.
+`AGENT_CONTROL_FOCUS_COMMAND` is one command for every machine, so with it set to
+`desktop/`'s tool, which is for GNOME, a tap on a Mac session's row says THE FOCUS
+COMMAND IS NOT INSTALLED ON \<HOST> unless a tool of your own is at the same path
+there; and the "+" needs a systemd-based Linux desktop.
 
     cd hub
     python3 -m venv .venv            # Debian/Ubuntu: sudo apt install python3-venv first
@@ -52,7 +64,7 @@ explains each one):
 
 | Variable | Default | |
 |---|---|---|
-| `AGENT_CONTROL_HOSTS` | this machine | Machines to show, comma-separated, in display order (at most 6). The others are reached with `ssh <name>` as the hub's user, non-interactively (`BatchMode=yes`), so a key without a passphrase prompt is needed. |
+| `AGENT_CONTROL_HOSTS` | this machine | Machines to show, comma-separated, in display order (at most 6). The others are reached with `ssh <name>` as the hub's user, non-interactively (`BatchMode=yes`), so a key without a passphrase prompt is needed. A Mac can be one of them: see [Install and run](#install-and-run). |
 | `AGENT_CONTROL_DEVICE_KEY_FILE` | `~/.config/agent-control/device_key` | The shared secret the display sends as a bearer token. `AGENT_CONTROL_DEVICE_KEY` gives the key itself instead. |
 | `AGENT_CONTROL_PORT`, `AGENT_CONTROL_BIND` | `8767`, `0.0.0.0` | Where the hub listens. |
 | `AGENT_CONTROL_NEW_SESSION_HOST` | empty (no "+") | The machine whose desktop the display's "+" opens a new session on. |
@@ -94,8 +106,13 @@ to-do line and no idle/done distinction. To give a machine the SDK:
 
     ./bootstrap-host.sh laptop buildbox    # a venv at ~/.local/share/agent-control/venv there, no sudo
 
-It needs Python 3.10 or later on that machine. The SSH probe uses that venv when it
-exists. Restart the hub afterwards.
+It needs a Python at 3.10 or later on that machine, and takes the first `python3` or
+`python3.N` it finds that is new enough: on the login shell's `PATH`, then in
+`/opt/homebrew/bin` and `/usr/local/bin`. A Mac's own `python3` is 3.9, and Homebrew's
+newer one is not on the `PATH` of an SSH shell there (tested with Homebrew's Python
+3.14). When it finds none it says so, naming those places, and that machine's sessions
+stay listed by name. The SSH probe uses that venv when it exists. Restart the hub
+afterwards.
 
 ## Tap to raise a window
 
@@ -123,8 +140,8 @@ from, for example outline it in the state's colour with the title.
 For a GNOME desktop (Wayland or X11), `desktop/` in this repository provides such a
 tool: `desktop/install.sh` installs a small GNOME Shell extension (under Wayland only
 code inside gnome-shell may raise a window) and the helper the hub runs, which raises
-the session's window and marks it that way. Install it on each machine with a desktop,
-then set, once for all of them:
+the session's window and marks it that way. Install it on each machine with a GNOME
+desktop, then set, once for all of them:
 
     AGENT_CONTROL_FOCUS_COMMAND='$HOME/.local/bin/agent-control-window raise {pid} --highlight {state} {title}'
 

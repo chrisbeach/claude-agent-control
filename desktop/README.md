@@ -71,7 +71,9 @@ it has a desktop.
    that machine's screen.
 
 On a machine without a desktop (a server you reach over SSH), a tap says THE FOCUS
-COMMAND IS NOT INSTALLED ON \<MACHINE>; there is no window to raise there.
+COMMAND IS NOT INSTALLED ON \<MACHINE>; there is no window to raise there. A tap on a
+Mac's session says the same: this tool is for GNOME, and the repository has none for
+macOS.
 
 ### The + button
 

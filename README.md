@@ -82,7 +82,11 @@ Anthropic directly.
   It needs Python 3.10+ and the Claude Code CLI, and SSH access (key-based, no
   prompt) to each other machine you want shown.
 - **Claude Code** on every machine you want shown, recent enough to have
-  `claude agents --json` (run it: it should print a JSON array).
+  `claude agents --json` (run it: it should print a JSON array). Each of the other
+  machines also needs a `python3` for the hub's probe, which need not be 3.10 (the
+  probe has been run on Python 3.9). A Mac can be one of them: its sessions are shown
+  like any other machine's, but nothing in this repository raises a window or opens a
+  session on macOS (see [hub/README.md](hub/README.md#install-and-run)).
 - A computer with **PlatformIO** to build and flash the firmware (it can be the same
   machine).
 
@@ -124,9 +128,12 @@ To keep it running, install the systemd user unit in `hub/examples/agent-control
 (instructions are in the file). If the machine has a firewall, open TCP port 8767 to
 the display.
 
-Optional, on each other machine with Python 3.10+: `./bootstrap-host.sh laptop` gives
-its probe the Claude Agent SDK, so its sessions show titles, to-do lines and the
-done/idle distinction rather than just their names. Restart the hub afterwards.
+Optional, for each other machine: `./bootstrap-host.sh laptop` gives its probe the
+Claude Agent SDK, so its sessions show titles, to-do lines and the done/idle
+distinction rather than just their names. It needs a Python 3.10 or later on that
+machine, which need not be its default `python3` (a Mac's own is 3.9; Homebrew's will
+do): [hub/README.md](hub/README.md#titles-on-other-machines) says where the script
+looks. Restart the hub afterwards.
 
 ### 2. Install PlatformIO
 

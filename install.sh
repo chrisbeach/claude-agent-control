@@ -27,7 +27,8 @@ THIS="$(uname -n)"
 THIS="${THIS%%.*}"   # this machine's name as the hub knows it
 KEY_FILE_DEFAULT="$HOME/.config/agent-control/device_key"
 BOARD_USB_ID="303A:1001"   # the ESP32-S3's own USB JTAG/serial device
-PIO_CORE_VERSION=6.1.19    # the PlatformIO core (pioarduino's) that goes with the platform in firmware/platformio.ini
+PIO_CORE_VERSION=6.2.0.post1   # the PlatformIO core (pioarduino's) this is tested with; firmware/platformio.ini's platform needs 6.2 or later
+PIO_PYTHONS='>=3.10,<3.15'      # the Pythons that the platform's own packages come ready-built for
 PIO_HOME="${AGENT_CONTROL_PLATFORMIO:-$HOME/.local/share/agent-control/platformio}"   # as in firmware/pio
 
 if [ -t 1 ]; then
@@ -90,14 +91,14 @@ confirm() {
     case "${answer:-$default}" in [Yy]*) return 0 ;; *) return 1 ;; esac
 }
 
-# The first python3 or python3.N at version 3.10 or later: on PATH, then where
-# Homebrew puts one (a Mac's own python3 is 3.9).
+# find_python N: the first python3 or python3.N at version 3.N or later: on PATH, then
+# where Homebrew puts one (a Mac's own python3 is 3.9).
 find_python() {
     local d p IFS=:
     for d in $PATH /opt/homebrew/bin /usr/local/bin; do
         for p in "$d"/python3 "$d"/python3.[0-9]*; do
             case "$p" in *-config) continue ;; esac
-            if "$p" -c "import sys; sys.exit(sys.version_info < (3, 10))" 2>/dev/null; then
+            if "$p" -c "import sys; sys.exit(sys.version_info < (3, $1))" 2>/dev/null; then
                 printf '%s\n' "$p"
                 return 0
             fi
@@ -417,64 +418,59 @@ PY
 
 # A value from firmware/secrets.ini.
 fw_setting() {
-    "$PY" -c "
-import configparser, sys
-c = configparser.ConfigParser(interpolation=None, inline_comment_prefixes=('#', ';'))
-c.read(sys.argv[1])
-print(c.get('secrets', sys.argv[2], fallback=''))" "$FW/secrets.ini" "$1"
+    "$PY" "$FW/tools/board_settings.py" get "$1"
 }
 
 # The time zone of this machine as a POSIX TZ string, which is how its zone file ends.
-# A zone with no abbreviation has a quoted one there (<+04>-4), which secrets.ini
-# cannot carry: it gets a plain name instead (STD-4), the clock never showing it.
 posix_timezone() {
     "$PY" -c "
-import re
 try:
     data = open('/etc/localtime', 'rb').read()
     tz = data.rstrip(b'\n').rsplit(b'\n', 1)[-1].decode('ascii')
     assert data[:4] == b'TZif' and 0 < len(tz) < 60 and all(32 < ord(c) < 127 for c in tz)
-    names = iter(('STD', 'DST'))
-    print(re.sub('<[^>]*>', lambda quoted: next(names), tz, count=2))
+    print(tz)
 except Exception:
     print('UTC0')"
 }
 
-# check_secret WHAT VALUE: stops when VALUE is one firmware/secrets.ini cannot carry
-# into the build. Its values pass through PlatformIO's settings parser and a shell
-# on their way to the compiler (secrets.ini.example says what survives that).
-check_secret() {
-    case "$2" in
-        *[\'\"\\\$\`\;\&\|\<\>\(\)\{\}]*|" "*|*" "|"#"*|*" #"*)
-            die "The $1 has something in it that firmware/secrets.ini cannot carry into the build:
-one of ' \" \\ \$ \` ; & | < > ( ) { }, a space at either end, or a # at the start or after a space.
-(Built in all the same, the board would not get what you typed, and a Wi-Fi name or password like
-that would never join.) Use one without: for Wi-Fi, a guest network with a plainer password, say." ;;
-    esac
+# check_setting WHAT NAME VALUE: stops when VALUE is not one the firmware can be built
+# with as its setting NAME (a Wi-Fi password of 5 characters, say). Any character goes.
+check_setting() {
+    local wrong
+    wrong="$(printf '%s' "$3" | "$PY" "$FW/tools/board_settings.py" value "$2" 2>&1)" || die "The $1 will not do: $wrong."
 }
 
-# PlatformIO for this firmware, in a directory of its own: the platform named in
-# firmware/platformio.ini builds only with the core it was released with (a later
-# core brings a later SCons, which that platform cannot link with), and keeps its
-# tools in the core's directory. firmware/pio runs it.
+# PlatformIO for this firmware, in a directory of its own, so that no other PlatformIO
+# on this machine is changed by it or changes it: the core this is tested with, and
+# the 2 GB of platform and tools that it downloads. The core is pioarduino's build,
+# which the platform would put into this environment itself, over any other.
+# firmware/pio runs it.
+#
+# uv makes the environment, so that its Python is one the platform's packages come
+# ready-built for whatever this machine's python3 is: one found here if there is
+# one, and one that uv downloads (into the same directory) if not. With a newer
+# Python some of those packages would have to be compiled, which takes a C compiler
+# and Python's headers; an older one the platform refuses.
 install_pio() {
-    local venv="$PIO_HOME/penv"
+    local venv="$PIO_HOME/penv" start="$PIO_HOME/uv"
     if "$venv/bin/python" -c "
 import importlib.metadata as m, sys
 sys.exit(m.version('pioarduino') != '$PIO_CORE_VERSION')" 2>/dev/null; then
         ok "PlatformIO core $PIO_CORE_VERSION is in $PIO_HOME"
         return
     fi
-    if ! "$PY" -c "import ensurepip" 2>/dev/null; then
-        die "PlatformIO needs Python's venv module complete with pip, and this Python has it without:
-  $(package_hint python3-venv)
-then run this again."
-    fi
     mkdir -p "$PIO_HOME"
-    make_venv "$PY" "$venv"
-    venv_pip "$venv" install -q --disable-pip-version-check "pioarduino==$PIO_CORE_VERSION" \
-        || die "pip could not install PlatformIO (its message is above)."
-    ok "Installed PlatformIO core $PIO_CORE_VERSION in $PIO_HOME (apart from any other PlatformIO here)"
+    make_venv "$PY" "$start"
+    venv_pip "$start" install -q --disable-pip-version-check uv || die "pip could not install uv (its message is above)."
+    rm -rf "$venv"
+    # uv goes into the new environment too: the platform installs its own packages with it.
+    ( export UV_PYTHON_INSTALL_DIR="$PIO_HOME/python" UV_CACHE_DIR="$PIO_HOME/.cache/uv" PATH="$PATH:/opt/homebrew/bin:/usr/local/bin"
+      "$start/bin/uv" venv -q --python "$PIO_PYTHONS" "$venv" \
+          && "$start/bin/uv" pip install -q --python "$venv/bin/python" "pioarduino==$PIO_CORE_VERSION" uv
+    ) || die "uv could not set up PlatformIO (its message is above). It downloads a Python when this machine has
+none of the versions the ESP32 platform's packages are built for ($PIO_PYTHONS), and PlatformIO from PyPI."
+    rm -rf "$start"
+    ok "Installed PlatformIO core $PIO_CORE_VERSION in $PIO_HOME, on $("$venv/bin/python" -V 2>&1) (apart from any other PlatformIO here)"
 }
 
 # The serial port of a board plugged in here; empty when there is none.
@@ -519,8 +515,8 @@ write_secrets() {
     fi
     ask AC_WIFI_SSID "Wi-Fi network name" "$ssid_here"
     ask AC_WIFI_PASSWORD "Wi-Fi password (not shown)" "" secret
-    check_secret "Wi-Fi name" "$AC_WIFI_SSID"
-    check_secret "Wi-Fi password" "$AC_WIFI_PASSWORD"
+    check_setting "Wi-Fi name" wifi_ssid "$AC_WIFI_SSID"
+    check_setting "Wi-Fi password" wifi_password "$AC_WIFI_PASSWORD"
 
     key="$(local_device_key)"
     if [ -n "$key" ]; then
@@ -532,13 +528,13 @@ write_secrets() {
         ok "the key is in $KEY_FILE_DEFAULT"
     fi
     ask AC_HUB_URL "The hub's address" "$hub_url"
-    case "$AC_HUB_URL" in http://*) ;; *) AC_HUB_URL="http://$AC_HUB_URL" ;; esac
-    case "$AC_HUB_URL" in http://*:[0-9]*) ;; *) AC_HUB_URL="${AC_HUB_URL%/}:8767" ;; esac
+    case "$AC_HUB_URL" in http://*|https://*) ;; *) AC_HUB_URL="http://$AC_HUB_URL" ;; esac
+    case "$AC_HUB_URL" in https://*|http://*:[0-9]*) ;; *) AC_HUB_URL="${AC_HUB_URL%/}:8767" ;; esac
     AC_HUB_URL="${AC_HUB_URL%/}"
     if [ -n "$key" ]; then AC_DEVICE_KEY="${AC_DEVICE_KEY:-$key}"; fi   # this machine's own: not asked for, nor shown
     ask AC_DEVICE_KEY "The hub's device key"
-    check_secret "hub address" "$AC_HUB_URL"
-    check_secret "device key" "$AC_DEVICE_KEY"
+    check_setting "hub address" hub_url "$AC_HUB_URL"
+    check_setting "device key" device_key "$AC_DEVICE_KEY"
 
     local status=0
     fetch "$AC_HUB_URL/api/fleet" "$AC_DEVICE_KEY" >/dev/null || status=$?
@@ -552,12 +548,13 @@ write_secrets() {
 
     ask AC_HOSTNAME "The board's name on your network" agent-display
     ask AC_TIMEZONE "Time zone for its clock, as a POSIX TZ string (this machine's is the default)" "$(posix_timezone)"
-    check_secret "board's name" "$AC_HOSTNAME"
-    check_secret "time zone" "$AC_TIMEZONE"
+    check_setting "board's name" hostname "$AC_HOSTNAME"
+    check_setting "time zone" timezone "$AC_TIMEZONE"
     if [ -z "${AC_ROTATE_180:-}" ]; then
         AC_ROTATE_180=0
         if confirm "Will your case or stand hold the board with its USB sockets at the top?" n; then AC_ROTATE_180=1; fi
     fi
+    check_setting "AC_ROTATE_180 setting" rotate_180 "$AC_ROTATE_180"
 
     ( umask 077
       "$PY" - "$FW/secrets.ini.example" "$FW/secrets.ini" \
@@ -565,7 +562,7 @@ write_secrets() {
           hostname "$AC_HOSTNAME" timezone "$AC_TIMEZONE" rotate_180 "$AC_ROTATE_180" <<'PY'
 import re, sys
 example, path = sys.argv[1:3]
-values = dict(zip(sys.argv[3::2], (v.replace("%", "%%") for v in sys.argv[4::2])))  # the file's own escape for %
+values = dict(zip(sys.argv[3::2], sys.argv[4::2]))
 lines = []
 for line in open(example).read().splitlines():
     name = re.match(r"(\w+)\s*=", line)
@@ -583,6 +580,8 @@ install_firmware() {
 
     step "The firmware: settings"
     if [ -f "$FW/secrets.ini" ]; then
+        "$PY" "$FW/tools/board_settings.py" check || die "That is your firmware/secrets.ini as it stands: put it right (secrets.ini.example
+says what each line is), or move it away to be asked for everything again."
         ok "Kept your firmware/secrets.ini"
     else
         write_secrets
@@ -592,9 +591,6 @@ install_firmware() {
     if [ ! -d "$PIO_HOME/packages/framework-espidf" ]; then
         ok "This first build downloads ESP-IDF, its compilers and LVGL (about 2 GB, into"
         ok "$PIO_HOME) and takes several minutes."
-    fi
-    if [ "$FW/sdkconfig.defaults" -nt "$FW/sdkconfig.waveshare7" ] && [ -f "$FW/sdkconfig.waveshare7" ]; then
-        rm -f "$FW/sdkconfig.waveshare7"   # generated from the defaults by the first build, and kept: stale once they change
     fi
     ( cd "$FW" && "$PIO" run ) || die "The build failed (its messages are above). firmware/README.md has more on the build."
 
@@ -643,9 +639,6 @@ Plug it in with a USB-C data cable and run: ./install.sh firmware"
 
 [ "$(id -u)" != 0 ] || die "Run this as yourself, not as root: the hub reads your own Claude Code sessions."
 case "$OS" in Linux|Darwin) ;; *) die "This script is for Linux and macOS; on $OS, follow the README's manual installation." ;; esac
-PY="$(find_python)" || die "This needs Python 3.10 or later (the hub does, and so does the ESP32 platform PlatformIO builds
-with), and there is none on PATH, in /opt/homebrew/bin or in /usr/local/bin.
-Get one ($(package_hint)), then run this again."
 PIO="$FW/pio"
 
 do_hub=0
@@ -663,6 +656,16 @@ case "$part" in
         fi
         do_firmware=1 ;;
 esac
+
+# The hub runs on this Python, so it must be 3.10 or later. The firmware half only starts
+# from it (install_pio gets PlatformIO a Python of its own), so there an older one will do.
+if [ "$do_hub" = 1 ]; then
+    PY="$(find_python 10)" || die "The hub needs Python 3.10 or later, and there is none on PATH, in /opt/homebrew/bin or in /usr/local/bin.
+Get one ($(package_hint)), then run this again."
+else
+    PY="$(find_python 8)" || die "This needs a python3 to start from (3.8 or later), and there is none on PATH, in /opt/homebrew/bin
+or in /usr/local/bin. Get one ($(package_hint)), then run this again."
+fi
 
 if [ "$do_hub" = 1 ]; then install_hub; fi
 if [ "$part" = all ] && [ "$do_hub" = 1 ]; then

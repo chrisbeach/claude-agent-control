@@ -2,10 +2,12 @@
 # drawn by LVGL into a frame buffer and saved as PNGs. `make png` writes out/*.png;
 # `make gif` plays the README's demos through a simulated touch screen into out/*.gif.
 #   LVGL is cloned at the version the firmware pins (src/idf_component.yml).
-#   cJSON comes from the ESP-IDF package PlatformIO installed; override CJSON_DIR if needed.
+#   cJSON comes from the ESP-IDF package PlatformIO installed (../install.sh's PlatformIO,
+#   or else your own); override CJSON_DIR if yours is elsewhere.
 LVGL_TAG ?= v9.3.0
 LVGL_DIR ?= lvgl
-CJSON_DIR ?= $(HOME)/.platformio/packages/framework-espidf/components/json/cJSON
+CJSON_DIR ?= $(firstword $(wildcard $(addsuffix /packages/framework-espidf/components/json/cJSON, \
+             $(or $(AGENT_CONTROL_PLATFORMIO),$(HOME)/.local/share/agent-control/platformio) $(HOME)/.platformio)))
 CC ?= gcc
 CFLAGS = -O1 -g -std=gnu11 -Wall -Wno-unused-function -DLV_CONF_INCLUDE_SIMPLE \
          -I. -I$(LVGL_DIR) -I../shared -I$(CJSON_DIR) \

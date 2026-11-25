@@ -23,6 +23,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "ac_settings.h"
 #include "esp_log.h"
 #include "esp_timer.h"
 #include "freertos/FreeRTOS.h"
@@ -33,12 +34,6 @@
 #include "ota.h"
 #include "ui.h"
 
-#ifndef AC_LEDS_GPIO
-#define AC_LEDS_GPIO 6
-#endif
-#ifndef AC_LEDS_REVERSED
-#define AC_LEDS_REVERSED 0
-#endif
 #define LEDS 3
 #define LEDS_CLEARED 60 /* a whole metre of 60/m, in case the strip is not cut yet */
 #define LEDS_CAP 96     /* of 255 per channel: 3 LEDs at most ~70 mA */

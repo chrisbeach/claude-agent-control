@@ -5,6 +5,7 @@
 #include <string.h>
 #include <time.h>
 
+#include "ac_settings.h" /* secrets.ini, as settings_header.py wrote it out for this build */
 #include "board.h"
 #include "cJSON.h"
 #include "esp_log.h"
@@ -20,16 +21,6 @@
 #include "ota.h"
 #include "ui.h"
 #include "wifi.h"
-
-#ifndef AC_HOSTNAME
-#define AC_HOSTNAME "agent-display"
-#endif
-#ifndef AC_TIMEZONE
-#define AC_TIMEZONE "UTC0"
-#endif
-#ifndef AC_LEDS_GPIO
-#define AC_LEDS_GPIO -1
-#endif
 
 static const char *TAG = "main";
 

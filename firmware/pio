@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
-# PlatformIO as ../install.sh set it up for this firmware: the core version that the
-# platform named in platformio.ini builds with, in a directory of its own, so that
-# no other PlatformIO on this machine changes it or is changed by it.
+# PlatformIO as ../install.sh set it up for this firmware: the core version it is
+# tested with, in a directory of its own, so that no other PlatformIO on this machine
+# changes it or is changed by it.
 #     ./pio run -t ota          ./pio device monitor
 set -euo pipefail
 home="${AGENT_CONTROL_PLATFORMIO:-$HOME/.local/share/agent-control/platformio}"

@@ -41,7 +41,7 @@ esp_err_t wifi_start(const char *ssid, const char *password, const char *hostnam
     ESP_ERROR_CHECK(esp_event_handler_register(IP_EVENT, IP_EVENT_STA_GOT_IP, on_event, NULL));
 
     wifi_config_t cfg = {0};
-    strncpy((char *)cfg.sta.ssid, ssid, sizeof(cfg.sta.ssid) - 1);
+    strncpy((char *)cfg.sta.ssid, ssid, sizeof(cfg.sta.ssid)); /* a name may fill all 32 bytes, with no NUL after it */
     strncpy((char *)cfg.sta.password, password, sizeof(cfg.sta.password) - 1);
     cfg.sta.threshold.authmode = WIFI_AUTH_WPA2_PSK;
     cfg.sta.pmf_cfg.capable = true;

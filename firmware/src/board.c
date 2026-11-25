@@ -1,5 +1,6 @@
 #include "board.h"
 
+#include "ac_settings.h"
 #include "driver/gpio.h"
 #include "driver/i2c_master.h"
 #include "esp_attr.h"
@@ -29,9 +30,6 @@ static const char *TAG = "board";
 
 /* AC_ROTATE_180=1 (secrets.ini `rotate_180`) turns the picture and the touch
  * coordinates upside down, for a board mounted with its USB sockets the other way. */
-#ifndef AC_ROTATE_180
-#define AC_ROTATE_180 0
-#endif
 
 #define LCD_PIXEL_CLOCK_HZ (16 * 1000 * 1000)
 #define LCD_BOUNCE_BUFFER_LINES 10

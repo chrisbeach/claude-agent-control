@@ -41,7 +41,7 @@ qualifying purchases.</sub>
 `secrets.ini` from your answers, builds, and flashes a board plugged in over USB.
 Its PlatformIO is in a directory of its own (`~/.local/share/agent-control/platformio`)
 and `./pio` here runs it: `./pio run -t ota`, `./pio device monitor`. By hand, with a
-PlatformIO of your own (which must be `pioarduino==6.1.19`: see below):
+PlatformIO of your own (core 6.2 or later):
 
     cp secrets.ini.example secrets.ini    # Wi-Fi, hub URL, device key, hostname, time zone
     pio run                               # build
@@ -50,21 +50,31 @@ PlatformIO of your own (which must be `pioarduino==6.1.19`: see below):
     pio run -t ota                        # every later flash, over Wi-Fi
 
 `platformio.ini` names the platform by its release: pioarduino's build of the
-Espressif platform, 55.03.39, which has this board's 16 MB flash, 8 MB PSRAM variant
-(PlatformIO's own `espressif32` does not) and brings ESP-IDF 5.5.4. It needs `git`,
-Python 3.10 or later, and PlatformIO core 6.1.19 in pioarduino's build
-(`pip install pioarduino==6.1.19`). Under core 6.2, which a plain
-`pip install platformio` now gives, the link step stops with
-`No module named 'SCons.Tool.FortranCommon'`: that core brings a later SCons than
-this platform release works with. LVGL and Espressif's LCD, touch, mDNS and
-LED-strip components come from the ESP component registry on the first build. Every setting is compiled in, so changing
-`secrets.ini` means a rebuild and reflash.
+Espressif platform, 55.03.313, which has this board's 16 MB flash, 8 MB PSRAM variant
+(PlatformIO's own `espressif32` does not) and brings ESP-IDF 5.5.6. It needs `git`,
+Python 3.10 to 3.14 (under 3.15, some of its Python packages are not ready-built yet
+and want a C compiler) and PlatformIO core 6.2 or later, PlatformIO's own
+(`pip install platformio`) or pioarduino's (`pip install pioarduino`); under an older
+core, PlatformIO says the platform is not compatible with it. The platform keeps its
+Python packages, pioarduino's core among them, in `penv` in PlatformIO's directory
+(`~/.platformio/penv`): a PlatformIO that itself lives there, as one from PlatformIO's
+installer script or its VS Code extension does, becomes pioarduino's build of
+it. LVGL and Espressif's LCD, touch, mDNS and LED-strip
+components come from the ESP component registry on the first build, at the versions
+`src/idf_component.yml` names.
+
+Every setting is compiled in, so changing `secrets.ini` means a rebuild and reflash.
+Before each build, `settings_header.py` reads `secrets.ini`, checks it (a missing
+setting, a misspelt one, a Wi-Fi password too short to be one: the build stops and
+says which line) and writes it out as `ac_settings.h` in the build directory, which
+the sources include. A value reaches the firmware exactly as it is typed in the file,
+whatever characters are in it: `secrets.ini.example` describes the format, and
+`tools/board_settings.py check` runs the same check without a build.
 
 The first build also writes the full ESP-IDF configuration, from
-`sdkconfig.defaults`, to `sdkconfig.waveshare7`, and later builds keep that file. When
-a `git pull` changes `sdkconfig.defaults`, delete `sdkconfig.waveshare7` before
-building, or the old values stay in force. (A checkout from before LVGL's heap moved
-to PSRAM otherwise stops with `set CONFIG_LV_USE_CUSTOM_MALLOC=y`.)
+`sdkconfig.defaults`, to `sdkconfig.waveshare7`, and later builds keep that file,
+except when `sdkconfig.defaults` has changed since (a `git pull`): then it is made
+again from the defaults, and says so.
 
 After a USB flash the chip can sit in ROM download mode (backlight on, screen black,
 nothing on the network): unplug the board and plug it back in once. From then on
@@ -132,7 +142,8 @@ are; `on=1` brings them back in the colours the counts then call for.
 A headless desktop build of the same `shared/ui.c` and `shared/fleet.c`, drawn by
 LVGL into a frame buffer: the screenshots are the real screen, not a mock-up. It
 clones LVGL at the version the firmware pins and compiles cJSON from the ESP-IDF
-package PlatformIO installed (override `CJSON_DIR` if yours is elsewhere); it needs
+package PlatformIO installed, `../install.sh`'s or else your own in `~/.platformio`
+(override `CJSON_DIR` if yours is elsewhere); it needs
 gcc, make and Pillow. Fixtures in `sim/fixtures/` are hub answers; scenes are listed
 in `sim/render.py`. `build/sim <fixture> none out.raw` also prints whether that fleet
 would hold the backlight on. The demos for `make gif`, also in `render.py`, are steps
@@ -153,6 +164,8 @@ zone. After editing a header, `make clean`.
 - `shared/`: compiled by both the firmware and the simulator. `fleet.c` (JSON to
   `ac_model_t`), `ui.c` (the LVGL screen), the embedded Antonio Bold TTF.
 - `sim/`: the desktop renderer.
+- `tools/board_settings.py`, `settings_header.py`: `secrets.ini`, checked and made
+  into the header the firmware is built with.
 - `tools/ota_push.py`, `ota_target.py`: the `pio run -t ota` upload.
 - `pio`: runs the PlatformIO that `../install.sh` set up.
 

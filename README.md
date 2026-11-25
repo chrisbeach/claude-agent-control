@@ -89,7 +89,7 @@ Anthropic directly.
   like any other machine's, but nothing in this repository raises a window or opens a
   session on macOS (see [hub/README.md](hub/README.md#install-and-run)).
 - A computer to build and flash the firmware from, over USB: Linux or macOS, with
-  `git` and Python 3.10+ (on Debian and Ubuntu, also `sudo apt install python3-venv`).
+  `git` and a `python3` (3.8 or later).
   It can be the same machine. The firmware is built with **PlatformIO**, which
   `install.sh` installs there.
 
@@ -128,19 +128,22 @@ Things to know about it:
   may not write to the board's serial port, PlatformIO's udev rules. Where something
   else needs root (a missing package, a firewall port), it prints the command for
   your distribution and leaves it to you.
-- **Python**: it takes the first `python3` or `python3.N` at 3.10 or later, on your
-  `PATH` or where Homebrew puts one, so a default `python3` that is too old (a Mac's
-  own is 3.9) is no obstacle. On Debian and Ubuntu the hub does not need
-  `python3-venv`; PlatformIO does.
+- **Python**: for the hub it takes the first `python3` or `python3.N` at 3.10 or
+  later, on your `PATH` or where Homebrew puts one, so a default `python3` that is
+  too old (a Mac's own is 3.9) is no obstacle. PlatformIO runs on a Python from 3.10
+  to 3.14, the versions the ESP32 platform's packages are built for: one of yours if
+  you have one, and otherwise one downloaded into PlatformIO's directory, so for the
+  firmware a `python3` that is older (a Mac's own) or newer (3.15) will do. On
+  Debian and Ubuntu neither half needs the `python3-venv` package.
 - **PlatformIO** goes into a directory of its own,
-  `~/.local/share/agent-control/platformio`, at the one core version the firmware's
-  platform builds with (the current PlatformIO does not build it), so a PlatformIO
-  you already have is neither used nor touched. `firmware/pio` runs it: after
-  `install.sh`, type `./pio` wherever these pages say `pio`.
-- **Wi-Fi names and passwords** cannot be carried into the build when they have a
-  quote, a backslash, a `$` or one of `; & | < > ( ) { }` in them
-  (`firmware/secrets.ini.example` has the full list): it says so, rather than flash
-  a board that would never join.
+  `~/.local/share/agent-control/platformio`, at the core version this is tested
+  with, so a PlatformIO you already have is neither used nor touched. `firmware/pio`
+  runs it: after `install.sh`, type `./pio` wherever these pages say `pio`. (Your own
+  PlatformIO builds the firmware too, if its core is 6.2 or later:
+  [firmware/README.md](firmware/README.md#build-and-flash) has what that changes in it.)
+- **Wi-Fi names and passwords** can have any character in them. What the board could
+  not use (a password of under 8 characters, a hub address that is not one) is turned
+  down with the reason, by the script and again by every build.
 - **No systemd user session** (macOS, a container, WSL without systemd): the hub is
   set up but not started; the script prints the command to run, to keep running in
   whatever way suits the machine.
@@ -152,7 +155,9 @@ Things to know about it:
 
 The hub half has been run on Ubuntu 22.04 to 26.04, Debian 12, Fedora, Arch, Alpine,
 openSUSE Leap and macOS (Apple Silicon); the firmware half, up to the finished
-build, from nothing on Ubuntu 24.04, with and without another PlatformIO there.
+build, from nothing on Ubuntu 22.04 to 26.04, Debian 12, Fedora 45 (Python 3.15), Arch
+and macOS (Apple Silicon), with and without another PlatformIO there, and from a
+machine whose only Python is 3.9.
 
 <details>
 <summary><strong>Manual installation</strong>: the same steps, by hand</summary>
@@ -207,16 +212,16 @@ looks. Restart the hub afterwards.
 On the computer you will flash from:
 
 ```bash
-python3 -m venv ~/.platformio/penv          # Python 3.10 or later; git is needed too
-~/.platformio/penv/bin/pip install pioarduino==6.1.19
+python3 -m venv ~/.platformio/penv          # Python 3.10 to 3.14; git is needed too
+~/.platformio/penv/bin/pip install pioarduino
 ln -s ~/.platformio/penv/bin/pio ~/.local/bin/pio    # or any directory on your PATH
 ```
 
-That is pioarduino's build of PlatformIO core, at the version the platform named in
-`firmware/platformio.ini` builds with. The current PlatformIO (6.2) does not build
-it: if that is the one you have, leave it be and let `./install.sh firmware` set up
-its own copy beside it. On Linux, let your user open the
-board's serial port, then log out and back in:
+That is pioarduino's build of PlatformIO core, which the firmware's platform is made
+for. A PlatformIO you already have will do instead, if `pio --version` says 6.2 or
+later (under an older core, the build stops and says the platform is not compatible
+with it). On Linux, let your user open the board's serial port, then log out and
+back in:
 
 ```bash
 sudo usermod -aG dialout "$USER"
@@ -234,8 +239,8 @@ cp secrets.ini.example secrets.ini
 
 Fill in `secrets.ini`:
 
-- `wifi_ssid`, `wifi_password`: your 2.4 GHz network. Some characters cannot be used
-  in them: the file says which.
+- `wifi_ssid`, `wifi_password`: your 2.4 GHz network, typed as they are, with no
+  quotes around them and nothing escaped.
 - `hub_url`: `http://<the hub machine's LAN IP>:8767`. A fixed IP (a DHCP
   reservation on your router) is safest.
 - `device_key`: the contents of `~/.config/agent-control/device_key` on the hub machine.
@@ -277,16 +282,12 @@ A new firmware that cannot reach the hub within 10 minutes rolls itself back to 
 previous one, so a bad `secrets.ini` cannot leave the board stranded once it has been
 flashed over USB with a working one.
 
-When a `git pull` changes `firmware/sdkconfig.defaults`, delete
-`firmware/sdkconfig.waveshare7` before the next build: the first build generates it
-from the defaults and later builds keep its old values.
-
 ### If something is wrong
 
 | The screen shows | Likely cause |
 |---|---|
 | Black screen, backlight on, after a USB flash | ROM download mode: unplug and replug the board. |
-| JOINING WI-FI, for ever | Wrong SSID or password, a 5 GHz-only network, or a name or password with a character `secrets.ini` cannot carry (`firmware/secrets.ini.example` lists them). |
+| JOINING WI-FI, for ever | Wrong SSID or password, or a 5 GHz-only network. |
 | CONTACTING THE HUB, then NO LINK TO THE HUB | `hub_url` is wrong, the hub is not running, or a firewall blocks port 8767. |
 | HUB ERROR: WRONG DEVICE KEY | `device_key` does not match the hub's key file. |
 | Nothing: it is dark, and a touch does not wake it | If the board still answers `curl -s http://agent-display.local/status`, it may have been switched off with `/screen?on=0` (`GET /screen` then says `off`, and `/status` says `"backlight": false`): `POST /screen?on=1`, or a restart, switches it back on. See [Optional extras](#optional-extras). |

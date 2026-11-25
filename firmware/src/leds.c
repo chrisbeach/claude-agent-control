@@ -12,6 +12,9 @@
  * POST /leds?c=RRGGBB,RRGGBB,... one colour per band, left band first
  * POST /leds?c=...&p=010         and these bands pulse (one digit per band, left band first)
  * (bearer = the device key): a test until the next fleet answer, when leds_set() takes over.
+ *
+ * leds_dark(true) (POST /screen?on=0, main.c) blacks every band out until leds_dark(false);
+ * colours set meanwhile are kept and shown then.
  * Every colour is scaled by LEDS_CAP/255, hue kept: the strip runs off the board's 3.3 V
  * regulator, which also feeds the ESP32. */
 #include "leds.h"
@@ -49,6 +52,7 @@ static uint8_t rgb[LEDS][3] = {{160, 110, 50}, {160, 110, 50}, {160, 110, 50}}; 
 static uint8_t pulsing;       /* bit b: band b pulses */
 static int64_t pulse_from_us; /* when the bands started pulsing: the pulse's phase */
 static esp_err_t last_err = ESP_OK;
+static bool dark;             /* leds_dark(): every band black, its colour kept for when the screen is back on */
 
 static uint8_t scaled(uint32_t channel) { return (uint8_t)(channel * LEDS_CAP / 255); }
 
@@ -70,7 +74,7 @@ static void show_locked(float light) {
         if (i < LEDS) {
             int band = AC_LEDS_REVERSED ? LEDS - 1 - i : i;
             const uint8_t *c = rgb[band];
-            float k = pulsing & (1 << band) ? light : 1.0f;
+            float k = dark ? 0.0f : pulsing & (1 << band) ? light : 1.0f;
             led_strip_set_pixel(strip, i, (uint32_t)(c[0] * k + 0.5f), (uint32_t)(c[1] * k + 0.5f),
                                 (uint32_t)(c[2] * k + 0.5f));
         } else {
@@ -102,7 +106,7 @@ static void apply(const uint8_t next[LEDS][3], uint8_t pulse) {
 static void pulse_task(void *arg) {
     for (;;) {
         xSemaphoreTake(lock, portMAX_DELAY);
-        bool on = pulsing != 0;
+        bool on = pulsing != 0 && !dark;
         if (on) show_locked(pulse_light(esp_timer_get_time()));
         xSemaphoreGive(lock);
         if (on) vTaskDelay(pdMS_TO_TICKS(FRAME_MS));
@@ -159,6 +163,15 @@ static esp_err_t leds_handler(httpd_req_t *req) {
              next[0][2], next[1][0], next[1][1], next[1][2], next[2][0], next[2][1], next[2][2], pulse & 1,
              (pulse >> 1) & 1, (pulse >> 2) & 1);
     return httpd_resp_sendstr(req, said);
+}
+
+void leds_dark(bool on) {
+    if (!lock) return;
+    xSemaphoreTake(lock, portMAX_DELAY);
+    dark = on;
+    show_locked(pulsing ? pulse_light(esp_timer_get_time()) : 1.0f);
+    xSemaphoreGive(lock);
+    if (!on && pulser) xTaskNotifyGive(pulser); /* a pulse that was held dark goes on */
 }
 
 void leds_set(const uint32_t colours[3], uint8_t pulse) {

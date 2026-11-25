@@ -17,5 +17,6 @@ bool board_touch_available(void);
 
 /* The backlight is a plain on/off line on the expander (no dimming). */
 esp_err_t board_backlight(bool on);
+bool board_backlight_on(void); /* as last set */
 
 lv_display_t *board_display(void);

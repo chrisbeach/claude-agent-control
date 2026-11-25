@@ -116,6 +116,7 @@ static esp_err_t status_handler(httpd_req_t *req) {
     cJSON_AddNumberToObject(json, "lvgl_heap", (double)lv_mem_psram_bytes());
     cJSON_AddNumberToObject(json, "lvgl_heap_fallbacks", (double)lv_mem_psram_fallbacks());
     /* input diagnostics: the backlight schedule keeps the panel lit while idle_ms < 60000 */
+    cJSON_AddBoolToObject(json, "backlight", board_backlight_on());
     cJSON_AddBoolToObject(json, "touch", board_touch_available());
     lv_display_t *disp = lv_display_get_default();
     if (disp) cJSON_AddNumberToObject(json, "idle_ms", (double)lv_display_get_inactive_time(disp));
@@ -245,6 +246,7 @@ esp_err_t ota_start(const char *bearer, const char *hostname, uint32_t confirm_t
 
     httpd_config_t cfg = HTTPD_DEFAULT_CONFIG();
     cfg.stack_size = 8 * 1024;
+    cfg.max_uri_handlers = 12; /* the default is 8: /status, /ota and the pages main.c and leds.c add */
     cfg.recv_wait_timeout = 15;
     cfg.lru_purge_enable = true;
     httpd_handle_t server = NULL;

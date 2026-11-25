@@ -290,12 +290,20 @@ esp_err_t board_init(void) {
     return ESP_OK;
 }
 
+static bool backlight_lit;
+
 bool board_touch_available(void) {
     return touch != NULL;
 }
 
 esp_err_t board_backlight(bool on) {
-    return ch422g_set(EXIO_BACKLIGHT, on);
+    esp_err_t err = ch422g_set(EXIO_BACKLIGHT, on);
+    if (err == ESP_OK) backlight_lit = on;
+    return err;
+}
+
+bool board_backlight_on(void) {
+    return backlight_lit;
 }
 
 lv_display_t *board_display(void) {

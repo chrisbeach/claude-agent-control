@@ -54,17 +54,19 @@ static bool have_model;
 static int64_t last_good_us;
 static fetch_session_t session = {.bearer = AC_DEVICE_KEY};
 static bool backlight_on;
+static bool screen_off; /* POST /screen?on=0: dark and deaf to touch until on=1, or a restart */
 static QueueHandle_t request_queue; /* taps waiting to be sent to the hub: a session's key, or "" for the "+" */
 
 /* Lit while any session is working, needs input or is done (its result is waiting to
  * be looked at), and for QUIET_MS after the last of those has gone; dark once there
- * is nothing but unused sessions, or none. A touch always wakes it. */
+ * is nothing but unused sessions, or none. A touch wakes it for WAKE_MS. All of that only while
+ * the screen is switched on: after POST /screen?on=0 it is dark whatever the sessions do. */
 static void backlight_timer(lv_timer_t *timer) {
     (void)timer;
     static uint32_t last_attention; /* lv ticks; boot counts as activity */
     if (ui_attention()) last_attention = lv_tick_get();
     uint32_t idle = lv_display_get_inactive_time(board_display());
-    bool want = lv_tick_elaps(last_attention) < QUIET_MS || idle < WAKE_MS;
+    bool want = !screen_off && (lv_tick_elaps(last_attention) < QUIET_MS || idle < WAKE_MS);
     if (want != backlight_on) {
         ESP_LOGI(TAG, "backlight %s", want ? "on" : "off");
         board_backlight(want);
@@ -229,6 +231,36 @@ static esp_err_t tap_handler(httpd_req_t *req) {
     return httpd_resp_sendstr(req, "ok\n");
 }
 
+/* POST /screen?on=0|1 (bearer = the device key): 0 switches the panel off, for a "screens off"
+ * button that also darkens the room's monitors: backlight and LEDs dark whatever the sessions do,
+ * and touches do nothing (a finger on a dark panel must not raise a window or open a session).
+ * 1 hands the backlight back to its usual rule, lit for WAKE_MS first as after a touch.
+ * GET /screen says which it is. The fleet is still followed meanwhile, so the list is current the
+ * moment the panel is lit. Not kept across a restart: the panel always starts switched on. */
+static esp_err_t screen_handler(httpd_req_t *req) {
+    if (!ota_authorised(req)) return refuse(req);
+    if (req->method == HTTP_POST) {
+        char query[16], value[4];
+        if (httpd_req_get_url_query_str(req, query, sizeof(query)) != ESP_OK ||
+            httpd_query_key_value(query, "on", value, sizeof(value)) != ESP_OK ||
+            (strcmp(value, "0") != 0 && strcmp(value, "1") != 0)) {
+            httpd_resp_set_status(req, "400 Bad Request");
+            return httpd_resp_sendstr(req, "on=0 or on=1 is required\n");
+        }
+        bool off = value[0] == '0';
+        lvgl_port_lock(0);
+        screen_off = off;
+        lv_indev_reset(NULL, NULL); /* a press under way is dropped, not finished later */
+        lv_indev_enable(NULL, !off);
+        if (!off) lv_display_trigger_activity(NULL);
+        backlight_timer(NULL); /* now, not at its next tick */
+        lvgl_port_unlock();
+        leds_dark(off);
+        ESP_LOGI(TAG, "screen %s", off ? "off" : "on");
+    }
+    return httpd_resp_sendstr(req, screen_off ? "off\n" : "on\n");
+}
+
 /* GET /screenshot (bearer = the device key): the screen as LVGL draws it, raw
  * RGB565 little-endian, 800x480, row by row. sim/render.py --raw makes a PNG of it. */
 static esp_err_t screenshot_handler(httpd_req_t *req) {
@@ -286,6 +318,10 @@ void app_main(void) {
     ESP_ERROR_CHECK(httpd_register_uri_handler(ota_httpd(), &screenshot_uri));
     const httpd_uri_t tap_uri = {.uri = "/tap", .method = HTTP_POST, .handler = tap_handler};
     ESP_ERROR_CHECK(httpd_register_uri_handler(ota_httpd(), &tap_uri));
+    const httpd_uri_t screen_get = {.uri = "/screen", .method = HTTP_GET, .handler = screen_handler};
+    ESP_ERROR_CHECK(httpd_register_uri_handler(ota_httpd(), &screen_get));
+    const httpd_uri_t screen_post = {.uri = "/screen", .method = HTTP_POST, .handler = screen_handler};
+    ESP_ERROR_CHECK(httpd_register_uri_handler(ota_httpd(), &screen_post));
 #if AC_LEDS_GPIO >= 0
     err = leds_start(ota_httpd()); /* the optional LEDs: never worth stopping the panel for */
     if (err != ESP_OK) ESP_LOGW(TAG, "leds: %s", esp_err_to_name(err));

@@ -1,0 +1,12 @@
+#!/usr/bin/env bash
+# PlatformIO as ../install.sh set it up for this firmware: the core version that the
+# platform named in platformio.ini builds with, in a directory of its own, so that
+# no other PlatformIO on this machine changes it or is changed by it.
+#     ./pio run -t ota          ./pio device monitor
+set -euo pipefail
+home="${AGENT_CONTROL_PLATFORMIO:-$HOME/.local/share/agent-control/platformio}"
+if [ ! -x "$home/penv/bin/pio" ]; then
+    echo "No PlatformIO in $home yet: run ../install.sh firmware" >&2
+    exit 1
+fi
+PLATFORMIO_CORE_DIR="$home" exec "$home/penv/bin/pio" "$@"

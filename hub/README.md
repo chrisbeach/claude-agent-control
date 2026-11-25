@@ -39,6 +39,9 @@ repository raises a window or opens a session on macOS, though.
 COMMAND IS NOT INSTALLED ON \<HOST> unless a tool of your own is at the same path
 there; and the "+" needs a systemd-based Linux desktop.
 
+`../install.sh hub` does all of this, asks which machines to show, and installs and
+starts the systemd user unit. By hand:
+
     cd hub
     python3 -m venv .venv            # Debian/Ubuntu: sudo apt install python3-venv first
     .venv/bin/pip install -r requirements.txt

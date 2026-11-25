@@ -88,10 +88,76 @@ Anthropic directly.
   probe has been run on Python 3.9). A Mac can be one of them: its sessions are shown
   like any other machine's, but nothing in this repository raises a window or opens a
   session on macOS (see [hub/README.md](hub/README.md#install-and-run)).
-- A computer with **PlatformIO** to build and flash the firmware (it can be the same
-  machine).
+- A computer to build and flash the firmware from, over USB: Linux or macOS, with
+  `git` and Python 3.10+ (on Debian and Ubuntu, also `sudo apt install python3-venv`).
+  It can be the same machine. The firmware is built with **PlatformIO**, which
+  `install.sh` installs there.
 
-### 1. Start the hub
+### Install
+
+On the always-on machine, with the board plugged into it by USB:
+
+```bash
+git clone https://github.com/chrisbeach/claude-agent-control.git ~/claude-agent-control
+~/claude-agent-control/install.sh
+```
+
+`install.sh` asks a few questions (which machines to show, your Wi-Fi name and
+password, the time zone) and does the rest:
+
+1. **The hub**: its Python packages in `hub/.venv`, a device key (the secret the hub
+   and the display share), `hub/.env`, a check that `ssh` reaches each other machine
+   and the Claude Agent SDK for them, and a systemd user service that keeps the hub
+   running. It ends by listing each machine and the sessions the hub sees there.
+2. **The firmware**: PlatformIO, `firmware/secrets.ini` from your answers, the build
+   (the first one downloads about 2 GB of ESP-IDF and compilers and takes several
+   minutes), and the flash over USB. When it has flashed, **unplug the board and plug
+   it back in**: it should show JOINING WI-FI, then CONTACTING THE HUB, then your
+   sessions.
+
+If the board is plugged into a different computer from the hub's, run the two halves
+where they belong: `./install.sh hub` on the always-on machine, then
+`./install.sh firmware` on the other, which asks for the hub's address and device key.
+
+Things to know about it:
+
+- **It is safe to run again**, for instance after a `git pull`: an existing device
+  key, `hub/.env` and `firmware/secrets.ini` are kept, never overwritten. To be asked
+  the firmware questions again, delete `firmware/secrets.ini`.
+- **It does not use sudo**, with one exception it asks about first: on Linux, if you
+  may not write to the board's serial port, PlatformIO's udev rules. Where something
+  else needs root (a missing package, a firewall port), it prints the command for
+  your distribution and leaves it to you.
+- **Python**: it takes the first `python3` or `python3.N` at 3.10 or later, on your
+  `PATH` or where Homebrew puts one, so a default `python3` that is too old (a Mac's
+  own is 3.9) is no obstacle. On Debian and Ubuntu the hub does not need
+  `python3-venv`; PlatformIO does.
+- **PlatformIO** goes into a directory of its own,
+  `~/.local/share/agent-control/platformio`, at the one core version the firmware's
+  platform builds with (the current PlatformIO does not build it), so a PlatformIO
+  you already have is neither used nor touched. `firmware/pio` runs it: after
+  `install.sh`, type `./pio` wherever these pages say `pio`.
+- **Wi-Fi names and passwords** cannot be carried into the build when they have a
+  quote, a backslash, a `$` or one of `; & | < > ( ) { }` in them
+  (`firmware/secrets.ini.example` has the full list): it says so, rather than flash
+  a board that would never join.
+- **No systemd user session** (macOS, a container, WSL without systemd): the hub is
+  set up but not started; the script prints the command to run, to keep running in
+  whatever way suits the machine.
+- **On a Mac** it offers the firmware only, unless you ask for the hub: the hub is
+  untested there.
+- **Unattended**: `--yes` takes the default answer to every yes/no question, and each
+  answer can be given in the environment (`AC_HOSTS`, `AC_WIFI_SSID`,
+  `AC_WIFI_PASSWORD` and the rest: `./install.sh --help` lists them).
+
+The hub half has been run on Ubuntu 22.04 to 26.04, Debian 12, Fedora, Arch, Alpine,
+openSUSE Leap and macOS (Apple Silicon); the firmware half, up to the finished
+build, from nothing on Ubuntu 24.04, with and without another PlatformIO there.
+
+<details>
+<summary><strong>Manual installation</strong>: the same steps, by hand</summary>
+
+#### 1. Start the hub
 
 On the always-on machine (not the Waveshare):
 
@@ -136,15 +202,20 @@ machine, which need not be its default `python3` (a Mac's own is 3.9; Homebrew's
 do): [hub/README.md](hub/README.md#titles-on-other-machines) says where the script
 looks. Restart the hub afterwards.
 
-### 2. Install PlatformIO
+#### 2. Install PlatformIO
 
 On the computer you will flash from:
 
 ```bash
-pipx install platformio        # or: python3 -m pip install --user platformio
+python3 -m venv ~/.platformio/penv          # Python 3.10 or later; git is needed too
+~/.platformio/penv/bin/pip install pioarduino==6.1.19
+ln -s ~/.platformio/penv/bin/pio ~/.local/bin/pio    # or any directory on your PATH
 ```
 
-(or install the PlatformIO extension in VS Code). On Linux, let your user open the
+That is pioarduino's build of PlatformIO core, at the version the platform named in
+`firmware/platformio.ini` builds with. The current PlatformIO (6.2) does not build
+it: if that is the one you have, leave it be and let `./install.sh firmware` set up
+its own copy beside it. On Linux, let your user open the
 board's serial port, then log out and back in:
 
 ```bash
@@ -154,7 +225,7 @@ curl -fsSL https://raw.githubusercontent.com/platformio/platformio-core/develop/
 sudo udevadm control --reload-rules && sudo udevadm trigger
 ```
 
-### 3. Configure the firmware
+#### 3. Configure the firmware
 
 ```bash
 cd ~/claude-agent-control/firmware
@@ -163,7 +234,8 @@ cp secrets.ini.example secrets.ini
 
 Fill in `secrets.ini`:
 
-- `wifi_ssid`, `wifi_password`: your 2.4 GHz network.
+- `wifi_ssid`, `wifi_password`: your 2.4 GHz network. Some characters cannot be used
+  in them: the file says which.
 - `hub_url`: `http://<the hub machine's LAN IP>:8767`. A fixed IP (a DHCP
   reservation on your router) is safest.
 - `device_key`: the contents of `~/.config/agent-control/device_key` on the hub machine.
@@ -171,7 +243,7 @@ Fill in `secrets.ini`:
 - `timezone`: a POSIX TZ string for the clock (examples in the file; default UTC).
 - `rotate_180 = 1` if your case or stand holds the board upside down.
 
-### 4. Flash it over USB
+#### 4. Flash it over USB
 
 Plug the board into your computer. It should appear as an Espressif USB JTAG/serial
 device (`lsusb` shows `303a:1001`), on `/dev/ttyACM0` on Linux or
@@ -187,13 +259,19 @@ the chip can stay in its ROM download mode: backlight on, screen black). It shou
 then show JOINING WI-FI, then CONTACTING THE HUB, then your sessions. To watch its
 log over USB: `pio device monitor`.
 
-### 5. Check it, and update it over Wi-Fi from now on
+</details>
+
+### Check it, and update it over Wi-Fi from now on
 
 ```bash
 curl -s http://agent-display.local/status         # build, IP, uptime
-pio run -t ota                                     # build and push a new firmware over Wi-Fi
-OTA_HOST=192.168.1.50 pio run -t ota               # if .local names do not resolve on your network
+cd ~/claude-agent-control/firmware
+./pio run -t ota                                   # build and push a new firmware over Wi-Fi
+OTA_HOST=192.168.1.50 ./pio run -t ota             # if .local names do not resolve on your network
 ```
+
+(`./pio` is the PlatformIO that `install.sh` set up; with one you installed by hand,
+it is plain `pio`.)
 
 A new firmware that cannot reach the hub within 10 minutes rolls itself back to the
 previous one, so a bad `secrets.ini` cannot leave the board stranded once it has been
@@ -208,7 +286,7 @@ from the defaults and later builds keep its old values.
 | The screen shows | Likely cause |
 |---|---|
 | Black screen, backlight on, after a USB flash | ROM download mode: unplug and replug the board. |
-| JOINING WI-FI, for ever | Wrong SSID or password, or a 5 GHz-only network. |
+| JOINING WI-FI, for ever | Wrong SSID or password, a 5 GHz-only network, or a name or password with a character `secrets.ini` cannot carry (`firmware/secrets.ini.example` lists them). |
 | CONTACTING THE HUB, then NO LINK TO THE HUB | `hub_url` is wrong, the hub is not running, or a firewall blocks port 8767. |
 | HUB ERROR: WRONG DEVICE KEY | `device_key` does not match the hub's key file. |
 | Nothing: it is dark, and a touch does not wake it | If the board still answers `curl -s http://agent-display.local/status`, it may have been switched off with `/screen?on=0` (`GET /screen` then says `off`, and `/status` says `"backlight": false`): `POST /screen?on=1`, or a restart, switches it back on. See [Optional extras](#optional-extras). |

@@ -1,4 +1,5 @@
-# A systemd user service for the hub. Edit the path if you cloned elsewhere, then:
+# A systemd user service for the hub. ../../install.sh installs it, with the path
+# of your checkout. By hand: edit the path if you cloned elsewhere, then:
 #   mkdir -p ~/.config/systemd/user
 #   cp examples/agent-control.service ~/.config/systemd/user/
 #   systemctl --user daemon-reload

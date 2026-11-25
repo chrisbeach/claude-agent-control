@@ -37,14 +37,27 @@ qualifying purchases.</sub>
 
 ## Build and flash
 
+`../install.sh firmware` does all of this: it installs PlatformIO, writes
+`secrets.ini` from your answers, builds, and flashes a board plugged in over USB.
+Its PlatformIO is in a directory of its own (`~/.local/share/agent-control/platformio`)
+and `./pio` here runs it: `./pio run -t ota`, `./pio device monitor`. By hand, with a
+PlatformIO of your own (which must be `pioarduino==6.1.19`: see below):
+
     cp secrets.ini.example secrets.ini    # Wi-Fi, hub URL, device key, hostname, time zone
     pio run                               # build
     pio run -t upload                     # first flash, over USB
     pio device monitor                    # logs at 115200 (Ctrl-C to quit)
     pio run -t ota                        # every later flash, over Wi-Fi
 
-LVGL and Espressif's LCD, touch, mDNS and LED-strip components come from the ESP
-component registry on the first build. Every setting is compiled in, so changing
+`platformio.ini` names the platform by its release: pioarduino's build of the
+Espressif platform, 55.03.39, which has this board's 16 MB flash, 8 MB PSRAM variant
+(PlatformIO's own `espressif32` does not) and brings ESP-IDF 5.5.4. It needs `git`,
+Python 3.10 or later, and PlatformIO core 6.1.19 in pioarduino's build
+(`pip install pioarduino==6.1.19`). Under core 6.2, which a plain
+`pip install platformio` now gives, the link step stops with
+`No module named 'SCons.Tool.FortranCommon'`: that core brings a later SCons than
+this platform release works with. LVGL and Espressif's LCD, touch, mDNS and
+LED-strip components come from the ESP component registry on the first build. Every setting is compiled in, so changing
 `secrets.ini` means a rebuild and reflash.
 
 The first build also writes the full ESP-IDF configuration, from
@@ -141,6 +154,7 @@ zone. After editing a header, `make clean`.
   `ac_model_t`), `ui.c` (the LVGL screen), the embedded Antonio Bold TTF.
 - `sim/`: the desktop renderer.
 - `tools/ota_push.py`, `ota_target.py`: the `pio run -t ota` upload.
+- `pio`: runs the PlatformIO that `../install.sh` set up.
 
 ## Hardware notes
 

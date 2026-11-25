@@ -50,7 +50,8 @@ so they are what the panel shows; the white circle marks where the finger touche
 - **Counts** of sessions working, needing input and done; a block per machine with
   its count (OFF when unreachable); optional ring gauges for the Claude plan's usage.
 - The backlight stays on while anything is working, waiting or done, and turns off
-  30 minutes after that; a touch wakes it.
+  30 minutes after that; a touch wakes it. The panel can also be switched off and on
+  with your monitors (see [Optional extras](#optional-extras)).
 - Optional: three WS2812B LEDs above the screen that light up with the three counts.
 
 ## How it works
@@ -210,13 +211,14 @@ from the defaults and later builds keep its old values.
 | JOINING WI-FI, for ever | Wrong SSID or password, or a 5 GHz-only network. |
 | CONTACTING THE HUB, then NO LINK TO THE HUB | `hub_url` is wrong, the hub is not running, or a firewall blocks port 8767. |
 | HUB ERROR: WRONG DEVICE KEY | `device_key` does not match the hub's key file. |
+| Nothing: it is dark, and a touch does not wake it | If the board still answers `curl -s http://agent-display.local/status`, it may have been switched off with `/screen?on=0` (`GET /screen` then says `off`, and `/status` says `"backlight": false`): `POST /screen?on=1`, or a restart, switches it back on. See [Optional extras](#optional-extras). |
 | A machine's block says OFF | The hub cannot run `ssh <name>` non-interactively, or `claude` is not found there: see `curl localhost:8767/healthz` on the hub. |
 | Tapping a row says WINDOW SWITCHING IS NOT SET UP ON THE HUB | Expected until you set `AGENT_CONTROL_FOCUS_COMMAND`: for a GNOME desktop, see [desktop/README.md](desktop/README.md) (its own table covers the messages after that); otherwise see [Optional extras](#optional-extras). |
 
 ## Optional extras
 
-All are hub settings in `hub/.env` (restart the hub after changing them); details in
-[hub/README.md](hub/README.md).
+All but the last two are hub settings in `hub/.env` (restart the hub after changing
+them); details in [hub/README.md](hub/README.md).
 
 - **+ opens a new session**: set `AGENT_CONTROL_NEW_SESSION_HOST` and
   `AGENT_CONTROL_NEW_SESSION_LAUNCHER` to a machine with a Linux desktop and a
@@ -244,16 +246,26 @@ All are hub settings in `hub/.env` (restart the hub after changing them); detail
   holds `claude_allowance_used_percent{window=...}` from an exporter of your own.
 - **Status LEDs**: three WS2812B LEDs on the board's spare GPIO; see
   [firmware/README.md](firmware/README.md#optional-status-leds).
+- **Off with your monitors**: the board's `/screen` page switches the panel off
+  (backlight and LEDs dark, touches ignored) and back on, so a "screens off" button or
+  script that darkens a room's monitors can darken the display too:
+
+  ```bash
+  curl -X POST -H "Authorization: Bearer <device key>" "http://agent-display.local/screen?on=0"
+  ```
+
+  `on=1` switches it back on, and so does a restart; sessions are still followed while
+  it is off. See [firmware/README.md](firmware/README.md#over-the-air-updates-and-the-boards-own-pages).
 
 ## Security
 
-The hub's API and the board's update, screenshot and tap pages are protected by the
-device key, sent as a bearer token over **plain HTTP**: keep both on a network you
-trust. Anyone with the key can see your session titles, raise windows and open
-sessions on your desktop, and flash the board. Besides SSH to the machines you list,
-the hub only runs `claude agents --json`, the Agent SDK's transcript readers,
-`claude -p` for the to-do lines, your configured focus command and the launcher;
-session ids and process ids are validated before they reach a shell.
+The hub's API and the board's update, screenshot, tap, screen and LED pages are
+protected by the device key, sent as a bearer token over **plain HTTP**: keep both on
+a network you trust. Anyone with the key can see your session titles, raise windows
+and open sessions on your desktop, and flash the board. Besides SSH to the machines
+you list, the hub only runs `claude agents --json`, the Agent SDK's transcript
+readers, `claude -p` for the to-do lines, your configured focus command and the
+launcher; session ids and process ids are validated before they reach a shell.
 
 ## Licence
 

@@ -29,7 +29,9 @@ qualifying purchases.</sub>
   on the hub). The row is highlighted and shows what happened for a few seconds.
 - **"+"**: the hub opens a new Claude Code session on the configured desktop.
 - **Backlight**: on while anything is working, needs input or is DONE, and for 30
-  minutes after the last of those; a touch wakes it for a minute.
+  minutes after the last of those; a touch wakes it for a minute. `POST /screen?on=0`
+  switches the panel off whatever the sessions do (see
+  [the board's own pages](#over-the-air-updates-and-the-boards-own-pages)).
 - **No link**: after 20 s without an answer from the hub the list is withdrawn
   rather than left stale.
 
@@ -65,11 +67,22 @@ The board runs a small HTTP server on port 80, announced over mDNS as
 
 | | |
 |---|---|
-| `GET /status` | Running build (git describe, date, ELF sha), slot, OTA state, IP, uptime, free heap and free internal RAM, LVGL's heap (see [Hardware notes](#hardware-notes)), touch state. |
+| `GET /status` | Running build (git describe, date, ELF sha), slot, OTA state, IP, uptime, free heap and free internal RAM, LVGL's heap (see [Hardware notes](#hardware-notes)), whether the backlight is lit right now (`"backlight"`), touch state. |
 | `POST /ota` | Body = `firmware.bin`: written to the other slot, then the board reboots into it. |
 | `GET /screenshot` | The screen as LVGL draws it, raw RGB565, 800×480. `python3 sim/render.py --raw shot.raw shot.png` makes a PNG. |
 | `POST /tap?row=N`, `POST /tap?new=1` | What a finger on row N, or on the "+", does. These are real taps: a window comes forward, a session opens. |
 | `POST /leds?c=RRGGBB[,RRGGBB,RRGGBB][&p=010]` | Sets the optional LEDs (left first; `p` = which pulse) until the next answer from the hub. |
+| `POST /screen?on=0`, `POST /screen?on=1` | Switches the panel off, or back on. Off: the backlight and the optional LEDs are dark whatever the sessions do, and a touch on the glass does nothing. On: the backlight goes back to its usual rule, lit for a minute first, as after a touch. Answers `on` or `off`; `GET /screen` only says which. |
+
+`/screen` is for a "screens off" button or script that darkens a room's monitors, so
+that it can darken this panel with them:
+
+    curl -X POST -H "Authorization: Bearer <device key>" "http://agent-display.local/screen?on=0"
+
+The board goes on following the fleet while it is switched off, so the list is current
+the moment it is lit again. A finger on the dark panel cannot raise a window or open a
+session (`/tap` still does). Off is not kept across a restart: the board always starts
+switched on.
 
 `pio run -t ota` (added by `ota_target.py`) builds, then runs `tools/ota_push.py`:
 it skips the upload when the board already runs that exact build, pushes it, waits
@@ -94,6 +107,9 @@ about 70 mA. Then set `leds_gpio = 6` (and `leds_reversed = 1` if the strip's fi
 LED is under the right-hand count) in `secrets.ini`. The counts are drawn 86 px
 (16.5 mm) apart around the screen's centre line, so LEDs mounted above the glass at
 that spacing each sit over their own count.
+
+`POST /screen?on=0` turns the LEDs off along with the backlight, whatever the counts
+are; `on=1` brings them back in the colours the counts then call for.
 
 ## Simulator
 
@@ -120,7 +136,7 @@ zone. After editing a header, `make clean`.
   sleep: the radio stays awake, so a tap's answer does not wait for the access point's
   next beacon), `fetch.c` (HTTP with the bearer key, a kept-alive long-poll session),
   `ota.c` (status and update server, rollback), `leds.c`, `main.c` (fetch loop, tap
-  requests, backlight, `/screenshot` and `/tap`).
+  requests, backlight, `/screenshot`, `/tap` and `/screen`).
 - `shared/`: compiled by both the firmware and the simulator. `fleet.c` (JSON to
   `ac_model_t`), `ui.c` (the LVGL screen), the embedded Antonio Bold TTF.
 - `sim/`: the desktop renderer.

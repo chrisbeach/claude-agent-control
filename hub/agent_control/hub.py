@@ -363,7 +363,7 @@ class Hub:
 
 
 def usage_labels_from(text):
-    """AGENT_CONTROL_USAGE_WINDOWS, "seven_day=WK,five_hour=5H": the allowance windows to show, in order, and their
+    """AGENT_CONTROL_USAGE_WINDOWS, "seven_day=WEEK,five_hour=5H": the allowance windows to show, in order, and their
     labels. Unset: fleet.USAGE_LABELS."""
     if text is None:
         return None

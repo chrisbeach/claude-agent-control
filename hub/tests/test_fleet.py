@@ -122,7 +122,7 @@ def test_revision_ignores_the_clock_but_not_the_content():
 
 def test_usage_windows_are_named_and_ordered():
     body = build([host("devbox", [])], usage={"seven_day_fable": 60.2, "seven_day": 33, "mystery": 9})
-    assert body["usage"] == [{"label": "WK", "percent": 33}, {"label": "FB", "percent": 60}]
+    assert body["usage"] == [{"label": "WEEK", "percent": 33}, {"label": "FABLE", "percent": 60}]
     assert build([host("devbox", [])])["usage"] == []
 
 

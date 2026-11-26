@@ -60,7 +60,8 @@
 #define LEG_BLOCKS AC_MAX_HOSTS
 #define GAUGE_D 32     /* an allowance window's ring gauge, right of the counts: diameter ... */
 #define GAUGE_W 4      /* ... ring width ... */
-#define GAUGE_PITCH 46 /* ... and spacing; those shown are centred between DONE and AGENTS */
+#define GAUGE_PITCH 46 /* ... and least spacing (more when a label is wider); those shown are centred between DONE and AGENTS */
+#define GAUGE_GAP 12   /* the least room between two gauges' labels */
 #define LEG_PAD 5
 #define LEG_LINE 4 /* between a host's count and its name */
 
@@ -478,16 +479,24 @@ static void update_frame(void) {
 
     /* the allowance gauges: the share used, round from twelve o'clock; amber, then red, as it runs out */
     int n_usage = live ? W.model.n_usage : 0;
+    int pitch = GAUGE_PITCH; /* wide enough that the widest word ("FABLE") keeps clear of its neighbours */
+    for (int i = 0; i < n_usage; i++) {
+        const char *word = W.model.usage[i].label;
+        int w = lv_text_get_width(word, strlen(word), F18, 0) + GAUGE_GAP;
+        if (w > pitch) pitch = w;
+    }
     for (int i = 0; i < AC_MAX_USAGE; i++) {
         bool used = i < n_usage;
         set_hidden(W.gauge[i].ring, !used);
         set_hidden(W.gauge[i].fig, !used);
         set_hidden(W.gauge[i].name, !used);
         if (!used) continue;
-        int cx = W.gauge_mid - (n_usage - 1) * GAUGE_PITCH / 2 + i * GAUGE_PITCH; /* the row of them centred */
+        int cx = W.gauge_mid - (n_usage - 1) * pitch / 2 + i * pitch; /* the row of them centred */
         lv_obj_set_x(W.gauge[i].ring, cx - GAUGE_D / 2);
-        lv_obj_set_x(W.gauge[i].fig, cx - GAUGE_PITCH / 2);
-        lv_obj_set_x(W.gauge[i].name, cx - GAUGE_PITCH / 2);
+        lv_obj_set_width(W.gauge[i].fig, pitch);
+        lv_obj_set_x(W.gauge[i].fig, cx - pitch / 2);
+        lv_obj_set_width(W.gauge[i].name, pitch);
+        lv_obj_set_x(W.gauge[i].name, cx - pitch / 2);
         const ac_usage_t *u = &W.model.usage[i];
         uint32_t colour = u->percent >= USAGE_RED ? C_RED : u->percent >= USAGE_AMBER ? C_AMBER : C_LAV;
         lv_arc_set_value(W.gauge[i].ring, u->percent < 0 ? 0 : u->percent > 100 ? 100 : u->percent);

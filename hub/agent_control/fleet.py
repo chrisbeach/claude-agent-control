@@ -17,7 +17,7 @@ DETAIL_CHARS = 36
 TODO_CHARS = 58       # what fits beside the pill in the row's 20 px face
 HOST_CHARS = 10
 TOKENS_CHARS = 10      # "12.3M TOK"; the firmware's buffer holds 15
-USAGE_LABEL_CHARS = 4  # a ring gauge's label; the firmware's buffer holds 11, the ring's width fits about 3
+USAGE_LABEL_CHARS = 5  # a ring gauge's label ("FABLE"); the firmware's buffer holds 11 and spaces the gauges to fit
 STALE_AFTER_SECONDS = 12  # a host that has not reported for this long is shown as off
 
 WORKING, WAITING, IDLE, RUNNING, DONE, FAILED, STOPPED = "working", "waiting", "idle", "running", "done", "failed", "stopped"
@@ -32,7 +32,7 @@ FROM_STATE = {"working": WORKING, "blocked": WAITING, "done": DONE, "failed": FA
 TODO_PENDING = "SUMMARISING..."
 # Allowance windows of the Claude plan, in display order: a ring gauge each on the display, under
 # these labels (AGENT_CONTROL_USAGE_WINDOWS overrides them). A window not listed here is not shown.
-USAGE_LABELS = {"seven_day": "WK", "seven_day_fable": "FB", "five_hour": "5H"}
+USAGE_LABELS = {"seven_day": "WEEK", "seven_day_fable": "FABLE", "five_hour": "5H"}
 
 _PUNCTUATION = {"‘": "'", "’": "'", "“": '"', "”": '"', "–": "-", "—": "-", "…": "...",
                 " ": " ", "•": "-"}

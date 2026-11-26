@@ -202,7 +202,7 @@ def test_a_title_reaches_the_focus_command_as_one_word_and_is_never_run(tmp_path
 
 def test_usage_windows_can_be_chosen_and_relabelled():
     assert hub_module.usage_labels_from(None) is None
-    assert hub_module.usage_labels_from("seven_day=WK, seven_day_opus = OPUS1 ,junk,=X") == {"seven_day": "WK", "seven_day_opus": "OPUS"}
+    assert hub_module.usage_labels_from("seven_day=WK, seven_day_opus = OPUS12 ,junk,=X") == {"seven_day": "WK", "seven_day_opus": "OPUS1"}
 
 
 LAUNCHER = "claude-terminal"

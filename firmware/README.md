@@ -11,8 +11,9 @@ qualifying purchases.</sub>
 ## What it shows
 
 - **Header**: the hub's clock and date; the number of sessions WORKING, needing
-  input and DONE; up to three ring gauges for the Claude plan's allowance (when the
-  hub has the figures); AGENTS.
+  input and DONE, each drawn at 40% of its colour while it is zero; up to three ring
+  gauges for the Claude plan's allowance (when the hub has the figures), labelled
+  WEEK, FABLE and 5H by default and spaced to fit the widest label; AGENTS.
 - **List**: a row per session: a state pill, how long it has been in that state and
   its token cost; its title and machine; for a finished session, a line of what is
   left for you to do. Needs-input first (its pill pulses), then DONE, then working,

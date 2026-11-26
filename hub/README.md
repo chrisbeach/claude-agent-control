@@ -75,7 +75,7 @@ explains each one):
 | `AGENT_CONTROL_FOCUS_COMMAND` | empty (a tap only highlights) | The command a tap runs to raise a session's window, with `{id}`, `{pid}`, `{state}` and `{title}` filled in; see below. |
 | `AGENT_CONTROL_CLAUDE` | the `claude` CLI, if found | The CLI that writes the to-do lines. Empty switches them off. |
 | `AGENT_CONTROL_PROMETHEUS` | empty (no gauges) | Prometheus base URL for the usage gauges; see below. |
-| `AGENT_CONTROL_USAGE_WINDOWS` | `seven_day=WK,seven_day_fable=FB,five_hour=5H` | Which allowance windows get a gauge, in order, and their labels (at most 3). |
+| `AGENT_CONTROL_USAGE_WINDOWS` | `seven_day=WEEK,seven_day_fable=FABLE,five_hour=5H` | Which allowance windows get a gauge, in order, and their labels (at most 3 windows; a label is cut to 5 characters). |
 | `AGENT_CONTROL_INTERVAL` | `3` | Seconds between probe reports. |
 
 ## Endpoints

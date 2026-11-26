@@ -49,8 +49,9 @@ so they are what the panel shows; the white circle marks where the finger touche
   summary of what it needs from you ("APPROVE GIT PUSH ORIGIN MAIN"), written by
   Claude Haiku from the session's last turn. Rows with nothing for you to do are
   dimmed.
-- **Counts** of sessions working, needing input and done; a block per machine with
-  its count (OFF when unreachable); optional ring gauges for the Claude plan's usage.
+- **Counts** of sessions working, needing input and done (a count at zero is dimmed,
+  so the ones that matter stand out); a block per machine with its count (OFF when
+  unreachable); optional ring gauges for the Claude plan's usage (WEEK, FABLE, 5H).
 - The backlight stays on while anything is working, waiting or done, and turns off
   30 minutes after that; a touch wakes it. The panel can also be switched off and on
   with your monitors (see [Optional extras](#optional-extras)).

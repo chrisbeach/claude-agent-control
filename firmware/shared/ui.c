@@ -84,6 +84,7 @@
 #define USAGE_RED 90
 #define QUIET_BRIGHTNESS 60 /* a row with nothing for the person to do: finished with nothing asked, or still working */
 #define BAND_BRIGHTNESS 30 /* the tapped row's band is its colour, well dimmed */
+#define ZERO_BRIGHTNESS 40 /* a header count (figure and word) that stands at zero */
 #define GLINT_W 56        /* a WORKING pill has a soft light passing across it, left to right ... */
 #define GLINT_OPA 64      /* ... this bright at its middle, fading to nothing either side */
 #define GLINT_MS 1400     /* ... taking this long to cross */
@@ -155,6 +156,9 @@ static struct {
 /* ---- small helpers -------------------------------------------------------- */
 
 static lv_color_t C(uint32_t hex) { return lv_color_hex(hex); }
+
+/* the header's counts, left to right: the status each counts */
+static const ac_status_t COUNT_STATUS[3] = {AC_WORKING, AC_WAITING, AC_DONE};
 
 static lv_color_t shade(uint32_t hex, int percent) {
     return lv_color_make((uint8_t)(((hex >> 16) & 0xFF) * percent / 100), (uint8_t)(((hex >> 8) & 0xFF) * percent / 100),
@@ -386,7 +390,6 @@ static void build_frame(lv_obj_t *scr) {
     lv_obj_set_pos(W.clock, VIEW_X, cap_at(34, HEAD_TOP));
     W.date = label(scr, F18, C_ROSE, "");
     lv_obj_set_pos(W.date, VIEW_X, cap_at(18, word_top));
-    static const ac_status_t COUNT_STATUS[3] = {AC_WORKING, AC_WAITING, AC_DONE};
     static const char *const COUNT_WORD[3] = {"WORKING", "NEED INPUT", "DONE"};
     for (int i = 0; i < 3; i++) {
         int left = LIGHT_X(i) - LIGHT_PITCH / 2;
@@ -463,6 +466,9 @@ static void update_frame(void) {
         for (int i = 0; i < 3; i++) {
             snprintf(text, sizeof(text), "%d", counts[i]);
             set_text(W.count_fig[i], text);
+            lv_color_t colour = shade(STATUS[COUNT_STATUS[i]].colour, counts[i] > 0 ? 100 : ZERO_BRIGHTNESS);
+            lv_obj_set_style_text_color(W.count_fig[i], colour, 0);
+            lv_obj_set_style_text_color(W.count_lbl[i], colour, 0);
         }
     }
     /* the pips: the upper one green while a DONE row wants looking at (not dimmed), the lower one

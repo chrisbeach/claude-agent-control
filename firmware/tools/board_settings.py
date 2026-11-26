@@ -160,9 +160,13 @@ def main(argv):
         if len(argv) in (2, 3) and argv[1] == "check":
             read(*argv[2:])
         elif len(argv) in (3, 4) and argv[1] == "get" and argv[2] in SETTINGS:
-            print(read(*argv[3:])[argv[2]])
+            sys.stdout.buffer.write((read(*argv[3:])[argv[2]] + "\n").encode("utf-8"))  # UTF-8 whatever the locale
         elif len(argv) == 3 and argv[1] == "value" and argv[2] in SETTINGS:
-            wrong = problem(argv[2], sys.stdin.read().rstrip("\n"))
+            try:
+                value = sys.stdin.buffer.read().decode("utf-8").rstrip("\n")
+            except UnicodeDecodeError:
+                raise SettingsError("it is not UTF-8 text")
+            wrong = problem(argv[2], value)
             if wrong:
                 raise SettingsError("it %s" % wrong)
         else:

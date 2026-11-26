@@ -165,7 +165,8 @@ zone. After editing a header, `make clean`.
   `ac_model_t`), `ui.c` (the LVGL screen), the embedded Antonio Bold TTF.
 - `sim/`: the desktop renderer.
 - `tools/board_settings.py`, `settings_header.py`: `secrets.ini`, checked and made
-  into the header the firmware is built with.
+  into the header the firmware is built with (`python3 -m unittest test_board_settings`
+  in `tools/` tests it).
 - `tools/ota_push.py`, `ota_target.py`: the `pio run -t ota` upload.
 - `pio`: runs the PlatformIO that `../install.sh` set up.
 

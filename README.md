@@ -1,5 +1,7 @@
 # Agent Control
 
+[![CI](https://github.com/chrisbeach/claude-agent-control/actions/workflows/ci.yml/badge.svg)](https://github.com/chrisbeach/claude-agent-control/actions/workflows/ci.yml)
+
 A desk display of every Claude Code session running on your machines, so you can see
 at a glance which ones are working, which are waiting for you, and which have
 finished and want their result checked. Tap a session to bring its terminal window
@@ -152,12 +154,20 @@ Things to know about it:
 - **Unattended**: `--yes` takes the default answer to every yes/no question, and each
   answer can be given in the environment (`AC_HOSTS`, `AC_WIFI_SSID`,
   `AC_WIFI_PASSWORD` and the rest: `./install.sh --help` lists them).
+- **No board yet**: `./install.sh firmware --no-flash` stops at the finished build.
 
 The hub half has been run on Ubuntu 22.04 to 26.04, Debian 12, Fedora, Arch, Alpine,
 openSUSE Leap and macOS (Apple Silicon); the firmware half, up to the finished
 build, from nothing on Ubuntu 22.04 to 26.04, Debian 12, Fedora 45 (Python 3.15), Arch
 and macOS (Apple Silicon), with and without another PlatformIO there, and from a
 machine whose only Python is 3.9.
+
+A GitHub Action ([ci.yml](.github/workflows/ci.yml)) does it all again, from nothing,
+on every push and every Monday, so that a change upstream (PlatformIO, the ESP32
+platform, a distribution's Python) is caught there: the hub's tests, the hub half on
+Ubuntu with the hub started by systemd, and the firmware half up to the finished
+build on Ubuntu (x86-64 and ARM), macOS, Debian, Fedora and Arch. The badge at the
+top of this page is its latest result.
 
 <details>
 <summary><strong>Manual installation</strong>: the same steps, by hand</summary>

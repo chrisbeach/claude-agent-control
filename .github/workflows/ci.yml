@@ -1,0 +1,118 @@
+# Runs what the README asks a newcomer to run, from nothing: the hub's tests, the hub
+# half of install.sh (started by systemd, as on a real machine), and the firmware half
+# up to the finished build on each kind of machine the README names. Nothing is cached,
+# and it also runs every Monday, so that a change upstream (PlatformIO, the ESP32
+# platform, PyPI, the component registry, a distribution's Python) shows up here first.
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  schedule:
+    - cron: "17 5 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  hub-tests:
+    name: Hub tests (Python ${{ matrix.python }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python: ["3.10", "3.x"]
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: ${{ matrix.python }}
+      - run: pip install -r requirements-dev.txt
+        working-directory: hub
+      - run: python -m pytest -q
+        working-directory: hub
+
+  settings-tests:
+    name: Settings tests (Python ${{ matrix.python }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python: ["3.9", "3.x"]
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: ${{ matrix.python }}
+      - run: python -m unittest -v test_board_settings
+        working-directory: firmware/tools
+      - run: bash -n install.sh firmware/pio hub/run.sh hub/bootstrap-host.sh desktop/install.sh
+
+  hub-install:
+    name: install.sh hub (systemd)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - name: A systemd user session, as a logged-in user has
+        run: |
+          sudo loginctl enable-linger "$USER"
+          echo "XDG_RUNTIME_DIR=/run/user/$(id -u)" >> "$GITHUB_ENV"
+          echo "DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/$(id -u)/bus" >> "$GITHUB_ENV"
+          for _ in $(seq 30); do [ -S "/run/user/$(id -u)/bus" ] && break; sleep 1; done
+      - run: systemctl --user show-environment >/dev/null
+      - run: ./install.sh hub --yes
+      - name: The hub is running under systemd and answers
+        run: |
+          systemctl --user is-active agent-control
+          curl -fsS http://127.0.0.1:8767/healthz
+          curl -fsS -H "Authorization: Bearer $(cat ~/.config/agent-control/device_key)" http://127.0.0.1:8767/api/fleet >/dev/null
+          test "$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:8767/api/fleet)" = 401
+      - name: A second run keeps the key and the settings
+        run: |
+          cp ~/.config/agent-control/device_key /tmp/key && cp hub/.env /tmp/env
+          ./install.sh hub --yes
+          cmp /tmp/key ~/.config/agent-control/device_key && cmp /tmp/env hub/.env
+          systemctl --user is-active agent-control
+      - if: failure()
+        run: journalctl --user -u agent-control -n 50 --no-pager || true
+
+  firmware:
+    name: install.sh firmware (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, ubuntu-24.04-arm, macos-latest]
+    steps:
+      - uses: actions/checkout@v7
+      - run: .github/scripts/build-firmware.sh
+      - name: The simulator, which draws the README's screenshots
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          sudo apt-get install -y -qq python3-pil >/dev/null
+          make -j"$(nproc)"
+          make png
+        working-directory: firmware/sim
+      - if: matrix.os == 'ubuntu-latest'
+        uses: actions/upload-artifact@v7
+        with:
+          name: simulator-screens
+          path: firmware/sim/out/*.png
+          if-no-files-found: error
+
+  firmware-distros:
+    name: install.sh firmware (${{ matrix.image }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        image: ["ubuntu:22.04", "debian:12", "fedora:latest", "archlinux:latest"]
+    steps:
+      - uses: actions/checkout@v7
+      - run: docker run --rm -v "$PWD:/repo:ro" "${{ matrix.image }}" /repo/.github/scripts/in-container.sh

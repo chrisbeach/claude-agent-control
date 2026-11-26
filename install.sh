@@ -6,6 +6,7 @@
 #   ./install.sh hub         only the hub: on the machine that is always on
 #   ./install.sh firmware    only the firmware: on the computer the board is plugged into
 #   ./install.sh --yes ...   take the default answer to every yes/no question
+#   ./install.sh --no-flash ...   build the firmware and stop there: no board needed
 #
 # It asks for what it needs (the machines to show, your Wi-Fi, the time zone) and
 # keeps what is already there: a device key, hub/.env and firmware/secrets.ini are
@@ -44,10 +45,12 @@ usage() { sed -n '2,/^$/p' "$0" | sed 's/^# \{0,1\}//'; }
 
 part=all
 YES=0
+FLASH=1
 while [ $# -gt 0 ]; do
     case "$1" in
         hub|firmware) part="$1" ;;
         -y|--yes) YES=1 ;;
+        --no-flash) FLASH=0 ;;
         -h|--help) usage; exit 0 ;;
         *) usage >&2; exit 2 ;;
     esac
@@ -560,14 +563,14 @@ write_secrets() {
       "$PY" - "$FW/secrets.ini.example" "$FW/secrets.ini" \
           wifi_ssid "$AC_WIFI_SSID" wifi_password "$AC_WIFI_PASSWORD" hub_url "$AC_HUB_URL" device_key "$AC_DEVICE_KEY" \
           hostname "$AC_HOSTNAME" timezone "$AC_TIMEZONE" rotate_180 "$AC_ROTATE_180" <<'PY'
-import re, sys
+import os, re, sys
 example, path = sys.argv[1:3]
-values = dict(zip(sys.argv[3::2], sys.argv[4::2]))
+values = dict(zip(sys.argv[3::2], (os.fsencode(v).decode("utf-8") for v in sys.argv[4::2])))  # UTF-8 whatever the locale
 lines = []
-for line in open(example).read().splitlines():
+for line in open(example, encoding="utf-8").read().splitlines():
     name = re.match(r"(\w+)\s*=", line)
     lines.append("%s = %s" % (name.group(1), values[name.group(1)]) if name and name.group(1) in values else line)
-open(path, "w").write("\n".join(lines) + "\n")
+open(path, "w", encoding="utf-8").write("\n".join(lines) + "\n")
 PY
     )
     ok "Wrote firmware/secrets.ini (the status LEDs and the rest are in there to edit)"
@@ -593,6 +596,12 @@ says what each line is), or move it away to be asked for everything again."
         ok "$PIO_HOME) and takes several minutes."
     fi
     ( cd "$FW" && "$PIO" run ) || die "The build failed (its messages are above). firmware/README.md has more on the build."
+
+    if [ "$FLASH" = 0 ]; then
+        ok "Built: firmware/.pio/build/waveshare7/firmware.bin. To flash it, plug the board in and"
+        ok "run ./install.sh firmware"
+        return
+    fi
 
     step "The firmware: flashing the board over USB"
     local port name
